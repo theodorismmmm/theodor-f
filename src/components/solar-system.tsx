@@ -1,12 +1,13 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
+import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
 import { X } from "lucide-react";
 import * as THREE from "three";
 import { TOUCH } from "three";
 
 const COLOR = {
-  bg: "#000000",
+  bg: "#010101",
   orbit: "#ececec",
   sun: "#fff8ee",
   mercury: "#c8c2b8",
@@ -40,6 +41,7 @@ type PlanetSpec = {
   axial: number;
   spin: number;
   color: string;
+  atmosphere?: string;
   ring?: { inner: number; outer: number };
   moons?: MoonSpec[];
 };
@@ -66,6 +68,7 @@ const PLANETS: PlanetSpec[] = [
     axial: 0.09,
     spin: 0.08,
     color: COLOR.venus,
+    atmosphere: "#f0d9a8",
   },
   {
     name: "Earth",
@@ -77,6 +80,7 @@ const PLANETS: PlanetSpec[] = [
     axial: 0.41,
     spin: 0.55,
     color: COLOR.earth,
+    atmosphere: "#6eb6ff",
     moons: [
       {
         radius: 0.042,
@@ -97,6 +101,7 @@ const PLANETS: PlanetSpec[] = [
     axial: 0.44,
     spin: 0.5,
     color: COLOR.mars,
+    atmosphere: "#d4845c",
   },
   {
     name: "Jupiter",
@@ -108,6 +113,7 @@ const PLANETS: PlanetSpec[] = [
     axial: 0.05,
     spin: 0.9,
     color: COLOR.jupiter,
+    atmosphere: "#e8c898",
   },
   {
     name: "Saturn",
@@ -119,6 +125,7 @@ const PLANETS: PlanetSpec[] = [
     axial: 0.47,
     spin: 0.8,
     color: COLOR.saturn,
+    atmosphere: "#f0dfb8",
     ring: { inner: 0.46, outer: 0.72 },
   },
   {
@@ -131,6 +138,7 @@ const PLANETS: PlanetSpec[] = [
     axial: 1.68,
     spin: 0.45,
     color: COLOR.uranus,
+    atmosphere: "#c8f4ef",
   },
   {
     name: "Neptune",
@@ -142,6 +150,7 @@ const PLANETS: PlanetSpec[] = [
     axial: 0.49,
     spin: 0.48,
     color: COLOR.neptune,
+    atmosphere: "#6a9cff",
   },
 ];
 
@@ -230,6 +239,57 @@ type OverlayRefs = {
   wrap: HTMLDivElement | null;
 };
 
+const NOISE_GLSL = /* glsl */ `
+vec3 mod289(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}
+vec4 mod289(vec4 x){return x-floor(x*(1.0/289.0))*289.0;}
+vec4 permute(vec4 x){return mod289(((x*34.0)+1.0)*x);}
+vec4 taylorInvSqrt(vec4 r){return 1.79284291400159-0.85373472095314*r;}
+float snoise(vec3 v){
+  const vec2 C=vec2(1.0/6.0,1.0/3.0);
+  const vec4 D=vec4(0.0,0.5,1.0,2.0);
+  vec3 i=floor(v+dot(v,C.yyy));
+  vec3 x0=v-i+dot(i,C.xxx);
+  vec3 g=step(x0.yzx,x0.xyz);
+  vec3 l=1.0-g;
+  vec3 i1=min(g.xyz,l.zxy);
+  vec3 i2=max(g.xyz,l.zxy);
+  vec3 x1=x0-i1+C.xxx;
+  vec3 x2=x0-i2+C.yyy;
+  vec3 x3=x0-D.yyy;
+  i=mod289(i);
+  vec4 p=permute(permute(permute(i.z+vec4(0.0,i1.z,i2.z,1.0))+i.y+vec4(0.0,i1.y,i2.y,1.0))+i.x+vec4(0.0,i1.x,i2.x,1.0));
+  float n_=0.142857142857;
+  vec3 ns=n_*D.wyz-D.xzx;
+  vec4 j=p-49.0*floor(p*ns.z*ns.z);
+  vec4 x_=floor(j*ns.z);
+  vec4 y_=floor(j-7.0*x_);
+  vec4 x=x_*ns.x+ns.yyyy;
+  vec4 y=y_*ns.x+ns.yyyy;
+  vec4 h=1.0-abs(x)-abs(y);
+  vec4 b0=vec4(x.xy,y.xy);
+  vec4 b1=vec4(x.zw,y.zw);
+  vec4 s0=floor(b0)*2.0+1.0;
+  vec4 s1=floor(b1)*2.0+1.0;
+  vec4 sh=-step(h,vec4(0.0));
+  vec4 a0=b0.xzyw+s0.xzyw*sh.xxyy;
+  vec4 a1=b1.xzyw+s1.xzyw*sh.zzww;
+  vec3 p0=vec3(a0.xy,h.x);
+  vec3 p1=vec3(a0.zw,h.y);
+  vec3 p2=vec3(a1.xy,h.z);
+  vec3 p3=vec3(a1.zw,h.w);
+  vec4 norm=taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));
+  p0*=norm.x;p1*=norm.y;p2*=norm.z;p3*=norm.w;
+  vec4 m=max(0.6-vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.0);
+  m=m*m;
+  return 42.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));
+}
+float fbm(vec3 p){
+  float v=0.0;float a=0.5;
+  for(int i=0;i<5;i++){v+=a*snoise(p);p*=2.05;a*=0.5;}
+  return v;
+}
+`;
+
 function usePrefersReducedMotion() {
   const [reduced, setReduced] = useState(false);
   useEffect(() => {
@@ -246,44 +306,9 @@ const FOCUS_Y = -1.05;
 
 function frameFor(width: number, height: number) {
   const aspect = width / height;
-  // Vertical fov is what the camera stores. On a tall phone that makes the
-  // horizontal view very narrow, so step back until the outer orbit fits.
   if (aspect < 0.85) return { y: 48, z: 42, fov: 48 };
   if (height < 560) return { y: 15, z: 32, fov: 36 };
   return { y: 13.5, z: 30, fov: 33 };
-}
-
-function OrbitLine({ radius }: { radius: number }) {
-  const line = useMemo(() => {
-    const segments = 288;
-    const positions = new Float32Array((segments + 1) * 3);
-    for (let i = 0; i <= segments; i++) {
-      const angle = (i / segments) * Math.PI * 2;
-      positions[i * 3] = Math.cos(angle) * radius;
-      positions[i * 3 + 1] = 0;
-      positions[i * 3 + 2] = Math.sin(angle) * radius;
-    }
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    const material = new THREE.LineBasicMaterial({
-      color: COLOR.orbit,
-      transparent: true,
-      opacity: 0.55,
-    });
-    const orbit = new THREE.Line(geometry, material);
-    orbit.raycast = () => undefined;
-    return orbit;
-  }, [radius]);
-
-  useEffect(() => {
-    return () => {
-      line.geometry.dispose();
-      const material = line.material;
-      if (!Array.isArray(material)) material.dispose();
-    };
-  }, [line]);
-
-  return <primitive object={line} />;
 }
 
 function hash(n: number) {
@@ -293,134 +318,602 @@ function hash(n: number) {
 
 function makePlanetTexture(name: string) {
   const canvas = document.createElement("canvas");
-  canvas.width = 256;
-  canvas.height = 128;
+  canvas.width = 512;
+  canvas.height = 256;
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
   const { width: w, height: h } = canvas;
 
   if (name === "Earth") {
-    ctx.fillStyle = "#1a4f86";
+    ctx.fillStyle = "#123a6a";
     ctx.fillRect(0, 0, w, h);
-    for (let i = 0; i < 22; i++) {
-      ctx.fillStyle = i % 3 === 0 ? "#6d8f45" : "#2f6b3a";
+    for (let i = 0; i < 40; i++) {
+      ctx.fillStyle = i % 3 === 0 ? "#6f9a4a" : "#2f6b3a";
       ctx.beginPath();
       ctx.ellipse(
         hash(i + 1) * w,
-        h * 0.2 + hash(i + 8) * h * 0.58,
-        14 + hash(i + 3) * 30,
-        8 + hash(i + 5) * 14,
+        h * 0.18 + hash(i + 8) * h * 0.62,
+        18 + hash(i + 3) * 42,
+        10 + hash(i + 5) * 18,
         hash(i + 2) * Math.PI,
         0,
         Math.PI * 2,
       );
       ctx.fill();
     }
+    ctx.fillStyle = "rgba(255,255,255,0.22)";
+    for (let i = 0; i < 28; i++) {
+      ctx.beginPath();
+      ctx.ellipse(
+        hash(i + 50) * w,
+        hash(i + 60) * h,
+        20 + hash(i + 70) * 36,
+        4 + hash(i + 80) * 8,
+        hash(i + 90) * Math.PI,
+        0,
+        Math.PI * 2,
+      );
+      ctx.fill();
+    }
     const ice = ctx.createLinearGradient(0, 0, 0, h);
-    ice.addColorStop(0, "rgba(255,255,255,0.92)");
-    ice.addColorStop(0.14, "rgba(255,255,255,0)");
-    ice.addColorStop(0.86, "rgba(255,255,255,0)");
-    ice.addColorStop(1, "rgba(255,255,255,0.92)");
+    ice.addColorStop(0, "rgba(255,255,255,0.95)");
+    ice.addColorStop(0.12, "rgba(255,255,255,0)");
+    ice.addColorStop(0.88, "rgba(255,255,255,0)");
+    ice.addColorStop(1, "rgba(255,255,255,0.95)");
     ctx.fillStyle = ice;
     ctx.fillRect(0, 0, w, h);
   } else if (name === "Jupiter" || name === "Saturn") {
     const bands =
       name === "Jupiter"
-        ? ["#c9a36a", "#efe0c2", "#a87448", "#e7d3aa", "#8d5a38", "#f3e6c8", "#b88958"]
-        : ["#f0e2c4", "#d7c094", "#efe6d0", "#c6a56e", "#f7edd8", "#b99668"];
+        ? ["#c9a36a", "#efe0c2", "#a87448", "#e7d3aa", "#8d5a38", "#f3e6c8", "#b88958", "#d8b078"]
+        : ["#f0e2c4", "#d7c094", "#efe6d0", "#c6a56e", "#f7edd8", "#b99668", "#e8d4ae"];
     const bandH = h / bands.length;
     bands.forEach((color, i) => {
       ctx.fillStyle = color;
       ctx.fillRect(0, i * bandH, w, bandH + 1);
+      const swirl = ctx.createLinearGradient(0, i * bandH, w, i * bandH + bandH);
+      swirl.addColorStop(0, "rgba(255,255,255,0)");
+      swirl.addColorStop(0.45, "rgba(255,255,255,0.08)");
+      swirl.addColorStop(1, "rgba(0,0,0,0.08)");
+      ctx.fillStyle = swirl;
+      ctx.fillRect(0, i * bandH, w, bandH + 1);
     });
     if (name === "Jupiter") {
-      ctx.fillStyle = "#c4553a";
+      const spot = ctx.createRadialGradient(w * 0.62, h * 0.58, 2, w * 0.62, h * 0.58, 22);
+      spot.addColorStop(0, "#e8784a");
+      spot.addColorStop(0.55, "#c4553a");
+      spot.addColorStop(1, "rgba(164,84,48,0)");
+      ctx.fillStyle = spot;
       ctx.beginPath();
-      ctx.ellipse(w * 0.62, h * 0.58, 16, 10, 0, 0, Math.PI * 2);
+      ctx.ellipse(w * 0.62, h * 0.58, 20, 12, 0.2, 0, Math.PI * 2);
       ctx.fill();
     }
   } else if (name === "Mars") {
     ctx.fillStyle = "#b55232";
     ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = "#8a3a24";
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 18; i++) {
+      ctx.fillStyle = i % 2 ? "#8a3a24" : "#c86a44";
       ctx.beginPath();
-      ctx.ellipse(hash(i) * w, hash(i + 4) * h, 20 + hash(i + 2) * 24, 8, 0, 0, Math.PI * 2);
+      ctx.ellipse(hash(i) * w, hash(i + 4) * h, 20 + hash(i + 2) * 28, 8 + hash(i + 7) * 10, 0, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.fillStyle = "rgba(245,236,230,0.85)";
-    ctx.fillRect(0, 0, w, 8);
-    ctx.fillRect(0, h - 8, w, 8);
+    ctx.fillStyle = "rgba(245,236,230,0.88)";
+    ctx.fillRect(0, 0, w, 12);
+    ctx.fillRect(0, h - 12, w, 12);
   } else if (name === "Venus") {
     const wash = ctx.createLinearGradient(0, 0, w, h);
     wash.addColorStop(0, "#f3e2b8");
+    wash.addColorStop(0.5, "#e0c484");
     wash.addColorStop(1, "#c9a56a");
     ctx.fillStyle = wash;
     ctx.fillRect(0, 0, w, h);
-    ctx.strokeStyle = "rgba(255,248,230,0.45)";
-    ctx.lineWidth = 3;
-    for (let i = 0; i < 6; i++) {
+    ctx.strokeStyle = "rgba(255,248,230,0.5)";
+    ctx.lineWidth = 4;
+    for (let i = 0; i < 10; i++) {
       ctx.beginPath();
       ctx.moveTo(0, hash(i) * h);
       ctx.bezierCurveTo(w * 0.3, hash(i + 2) * h, w * 0.6, hash(i + 4) * h, w, hash(i + 6) * h);
       ctx.stroke();
     }
   } else if (name === "Uranus" || name === "Neptune") {
-    ctx.fillStyle = name === "Uranus" ? "#b7e4df" : "#2f62b8";
+    ctx.fillStyle = name === "Uranus" ? "#9fdad4" : "#2458a8";
     ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = name === "Uranus" ? "rgba(255,255,255,0.28)" : "rgba(140,190,255,0.35)";
-    ctx.fillRect(0, h * 0.42, w, 6);
+    const band = ctx.createLinearGradient(0, 0, 0, h);
+    band.addColorStop(0.35, "rgba(255,255,255,0)");
+    band.addColorStop(0.48, name === "Uranus" ? "rgba(255,255,255,0.28)" : "rgba(140,190,255,0.4)");
+    band.addColorStop(0.55, "rgba(255,255,255,0)");
+    ctx.fillStyle = band;
+    ctx.fillRect(0, 0, w, h);
     if (name === "Neptune") {
-      ctx.fillStyle = "#d7ecff";
+      const spot = ctx.createRadialGradient(w * 0.3, h * 0.38, 1, w * 0.3, h * 0.38, 14);
+      spot.addColorStop(0, "#d7ecff");
+      spot.addColorStop(1, "rgba(80,130,210,0)");
+      ctx.fillStyle = spot;
       ctx.beginPath();
-      ctx.ellipse(w * 0.3, h * 0.38, 8, 5, 0, 0, Math.PI * 2);
+      ctx.ellipse(w * 0.3, h * 0.38, 12, 8, 0, 0, Math.PI * 2);
       ctx.fill();
     }
   } else {
     ctx.fillStyle = name === "Moon" ? "#c8c4bc" : "#b7b1a8";
     ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = "rgba(70,66,60,0.45)";
-    for (let i = 0; i < 16; i++) {
+    ctx.fillStyle = "rgba(70,66,60,0.5)";
+    for (let i = 0; i < 36; i++) {
       ctx.beginPath();
-      ctx.arc(hash(i) * w, hash(i + 3) * h, 2 + hash(i + 6) * 5, 0, Math.PI * 2);
+      ctx.arc(hash(i) * w, hash(i + 3) * h, 2 + hash(i + 6) * 7, 0, Math.PI * 2);
       ctx.fill();
     }
   }
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 4;
+  texture.anisotropy = 8;
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
   return texture;
 }
 
 function makeRingTexture() {
   const canvas = document.createElement("canvas");
-  canvas.width = 128;
-  canvas.height = 128;
+  canvas.width = 512;
+  canvas.height = 64;
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
-  const bands = [
-    { radius: 60, width: 10, color: "rgba(243,230,204,0.95)" },
-    { radius: 48, width: 4, color: "rgba(243,230,204,0.12)" },
-    { radius: 40, width: 8, color: "rgba(214,186,140,0.9)" },
-    { radius: 30, width: 5, color: "rgba(255,246,228,0.75)" },
-  ];
-  for (const band of bands) {
-    ctx.beginPath();
-    ctx.arc(64, 64, band.radius, 0, Math.PI * 2);
-    ctx.strokeStyle = band.color;
-    ctx.lineWidth = band.width;
-    ctx.stroke();
+  for (let x = 0; x < 512; x++) {
+    const t = x / 511;
+    const gap = Math.abs(t - 0.42) < 0.035 ? 0.05 : 1;
+    const grain = 0.55 + hash(x * 0.17) * 0.45;
+    const alpha = gap * grain * (0.15 + 0.85 * Math.sin(t * Math.PI));
+    const shade = 180 + hash(x * 0.31) * 75;
+    ctx.fillStyle = `rgba(${shade},${shade - 12},${shade - 36},${alpha})`;
+    ctx.fillRect(x, 0, 1, 64);
   }
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
   return texture;
+}
+
+function makeGlowTexture(inner: number) {
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  const c = size / 2;
+  const glow = ctx.createRadialGradient(c, c, c * inner, c, c, c);
+  glow.addColorStop(0, "rgba(255, 236, 190, 0)");
+  glow.addColorStop(0.08, "rgba(255, 214, 120, 0.95)");
+  glow.addColorStop(0.28, "rgba(255, 140, 36, 0.32)");
+  glow.addColorStop(0.55, "rgba(255, 90, 12, 0.08)");
+  glow.addColorStop(1, "rgba(255, 60, 0, 0)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, size, size);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function Starfield({ animate }: { animate: boolean }) {
+  const material = useMemo(() => {
+    return new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      side: THREE.BackSide,
+      uniforms: {
+        uTime: { value: 0 },
+        uIntensity: { value: 1 },
+      },
+      vertexShader: /* glsl */ `
+        varying vec3 vDir;
+        void main() {
+          vDir = normalize(position);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        precision highp float;
+        varying vec3 vDir;
+        uniform float uTime;
+        uniform float uIntensity;
+
+        float hash31(vec3 p) {
+          p = fract(p * 0.1031);
+          p += dot(p, p.yzx + 33.33);
+          return fract((p.x + p.y) * p.z);
+        }
+
+        void main() {
+          vec3 dir = normalize(vDir);
+          float milky = pow(1.0 - abs(dir.y), 2.4) * 0.045;
+          vec3 col = vec3(0.004, 0.004, 0.006) + milky * vec3(0.1, 0.11, 0.16);
+
+          float cells = 180.0;
+          vec3 cell = floor(dir * cells);
+          float n = hash31(cell);
+          float twinkle = 0.65 + 0.35 * sin(uTime * (1.4 + n * 3.2) + n * 40.0);
+          float star = smoothstep(0.992, 1.0, n) * twinkle;
+          float bright = smoothstep(0.997, 1.0, n);
+          col += star * vec3(0.75, 0.82, 1.0) * uIntensity;
+          col += bright * vec3(1.0, 0.95, 0.85) * 1.4 * uIntensity;
+
+          float dust = hash31(dir * 42.0);
+          col += smoothstep(0.86, 1.0, dust) * 0.02 * vec3(0.5, 0.6, 1.0);
+
+          gl_FragColor = vec4(col, 1.0);
+        }
+      `,
+    });
+  }, []);
+
+  useEffect(() => () => material.dispose(), [material]);
+
+  useFrame((_, delta) => {
+    if (animate) material.uniforms.uTime.value += delta;
+  });
+
+  return (
+    <mesh material={material} renderOrder={-10}>
+      <sphereGeometry args={[90, 48, 32]} />
+    </mesh>
+  );
+}
+
+function OrbitLine({
+  radius,
+  dim,
+  animate,
+}: {
+  radius: number;
+  dim: number;
+  animate: boolean;
+}) {
+  const material = useRef<THREE.ShaderMaterial>(null);
+  const geometry = useMemo(() => {
+    const segments = 320;
+    const positions = new Float32Array((segments + 1) * 3);
+    for (let i = 0; i <= segments; i++) {
+      const angle = (i / segments) * Math.PI * 2;
+      positions[i * 3] = Math.cos(angle) * radius;
+      positions[i * 3 + 1] = 0;
+      positions[i * 3 + 2] = Math.sin(angle) * radius;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    return geo;
+  }, [radius]);
+
+  const mat = useMemo(() => {
+    return new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      uniforms: {
+        uTime: { value: 0 },
+        uDim: { value: 0 },
+        uColor: { value: new THREE.Color(COLOR.orbit) },
+      },
+      vertexShader: /* glsl */ `
+        varying float vAngle;
+        void main() {
+          vAngle = atan(position.z, position.x);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        precision highp float;
+        varying float vAngle;
+        uniform float uTime;
+        uniform float uDim;
+        uniform vec3 uColor;
+        void main() {
+          float dash = 0.55 + 0.45 * sin(vAngle * 28.0 - uTime * 0.55);
+          float glow = 0.22 + 0.18 * sin(vAngle * 3.0 + uTime * 0.35);
+          float alpha = mix(0.18, 0.55, dash) * glow;
+          alpha *= mix(1.0, 0.18, uDim);
+          gl_FragColor = vec4(uColor, alpha);
+        }
+      `,
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      geometry.dispose();
+      mat.dispose();
+    };
+  }, [geometry, mat]);
+
+  useFrame((_, delta) => {
+    mat.uniforms.uDim.value = THREE.MathUtils.damp(mat.uniforms.uDim.value, dim, 4, delta);
+    if (animate) mat.uniforms.uTime.value += delta;
+    if (material.current) material.current.uniforms.uDim.value = mat.uniforms.uDim.value;
+  });
+
+  const line = useMemo(() => {
+    const object = new THREE.Line(geometry, mat);
+    object.raycast = () => undefined;
+    return object;
+  }, [geometry, mat]);
+
+  return <primitive object={line} />;
+}
+
+function Atmosphere({
+  radius,
+  color,
+  intensity,
+  animate,
+  selected,
+}: {
+  radius: number;
+  color: string;
+  intensity: number;
+  animate: boolean;
+  selected: boolean;
+}) {
+  const material = useMemo(() => {
+    return new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      side: THREE.BackSide,
+      blending: THREE.AdditiveBlending,
+      uniforms: {
+        uColor: { value: new THREE.Color(color) },
+        uIntensity: { value: intensity },
+        uPulse: { value: 0 },
+        uTime: { value: 0 },
+      },
+      vertexShader: /* glsl */ `
+        varying vec3 vNormalW;
+        varying vec3 vView;
+        void main() {
+          vec4 world = modelMatrix * vec4(position, 1.0);
+          vNormalW = normalize(mat3(modelMatrix) * normal);
+          vView = normalize(cameraPosition - world.xyz);
+          gl_Position = projectionMatrix * viewMatrix * world;
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        precision highp float;
+        varying vec3 vNormalW;
+        varying vec3 vView;
+        uniform vec3 uColor;
+        uniform float uIntensity;
+        uniform float uPulse;
+        uniform float uTime;
+        void main() {
+          float fresnel = pow(1.0 - max(dot(normalize(vNormalW), normalize(vView)), 0.0), 2.8);
+          float breath = 0.92 + 0.08 * sin(uTime * 1.2);
+          float alpha = fresnel * uIntensity * breath * (1.0 + uPulse * 0.55);
+          gl_FragColor = vec4(uColor, alpha);
+        }
+      `,
+    });
+  }, [color, intensity]);
+
+  useEffect(() => () => material.dispose(), [material]);
+
+  useFrame((_, delta) => {
+    if (animate) material.uniforms.uTime.value += delta;
+    const target = selected ? 1 : 0;
+    material.uniforms.uPulse.value = THREE.MathUtils.damp(
+      material.uniforms.uPulse.value,
+      target,
+      5,
+      delta,
+    );
+  });
+
+  return (
+    <mesh scale={1.18} material={material}>
+      <sphereGeometry args={[radius, 48, 32]} />
+    </mesh>
+  );
+}
+
+function PlanetBody({
+  name,
+  radius,
+  texture,
+  selected,
+  hot,
+  animate,
+  gas,
+}: {
+  name: string;
+  radius: number;
+  texture: THREE.Texture | null;
+  selected: boolean;
+  hot: boolean;
+  animate: boolean;
+  gas: boolean;
+}) {
+  const material = useMemo(() => {
+    const tintKey = name.toLowerCase() as keyof typeof COLOR;
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        uMap: { value: texture },
+        uHasMap: { value: texture ? 1 : 0 },
+        uColor: { value: new THREE.Color("white") },
+        uSunPos: { value: new THREE.Vector3(0, 0, 0) },
+        uTime: { value: 0 },
+        uSelect: { value: 0 },
+        uGas: { value: gas ? 1 : 0 },
+        uTint: { value: new THREE.Color(COLOR[tintKey] ?? "#ffffff") },
+      },
+      vertexShader: /* glsl */ `
+        varying vec3 vWorldPos;
+        varying vec3 vNormalW;
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          vec4 world = modelMatrix * vec4(position, 1.0);
+          vWorldPos = world.xyz;
+          vNormalW = normalize(mat3(modelMatrix) * normal);
+          gl_Position = projectionMatrix * viewMatrix * world;
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        precision highp float;
+        varying vec3 vWorldPos;
+        varying vec3 vNormalW;
+        varying vec2 vUv;
+        uniform sampler2D uMap;
+        uniform float uHasMap;
+        uniform vec3 uColor;
+        uniform vec3 uSunPos;
+        uniform float uTime;
+        uniform float uSelect;
+        uniform float uGas;
+        uniform vec3 uTint;
+
+        void main() {
+          vec3 N = normalize(vNormalW);
+          vec3 L = normalize(uSunPos - vWorldPos);
+          float ndl = max(dot(N, L), 0.0);
+          float wrap = ndl * 0.72 + 0.28;
+          float soft = smoothstep(0.0, 0.55, ndl);
+          float night = 1.0 - soft;
+
+          vec3 albedo = uTint;
+          if (uHasMap > 0.5) {
+            albedo = texture2D(uMap, vUv).rgb;
+          }
+          albedo *= uColor;
+
+          vec3 light = vec3(1.0, 0.96, 0.88);
+          vec3 ambient = vec3(0.035, 0.038, 0.05);
+          vec3 diffuse = albedo * light * (0.16 + 0.98 * wrap);
+
+          float rim = pow(1.0 - max(dot(N, normalize(cameraPosition - vWorldPos)), 0.0), 3.0);
+          vec3 atmosphere = mix(uTint, light, 0.35) * rim * (0.16 + 0.38 * soft);
+
+          float spec = pow(max(dot(reflect(-L, N), normalize(cameraPosition - vWorldPos)), 0.0), mix(48.0, 18.0, uGas));
+          vec3 specular = light * spec * mix(0.07, 0.24, uGas) * soft;
+
+          vec3 nightGlow = albedo * vec3(0.015, 0.02, 0.04) * night;
+          vec3 color = ambient * albedo + diffuse + atmosphere + specular + nightGlow;
+          float pulse = 0.5 + 0.5 * sin(uTime * 2.4);
+          color += uTint * uSelect * (0.14 + 0.12 * pulse);
+          color = pow(max(color, 0.0), vec3(0.96));
+          gl_FragColor = vec4(color, 1.0);
+        }
+      `,
+    });
+  }, [texture, gas, name]);
+
+  useEffect(() => () => material.dispose(), [material]);
+
+  useFrame((_, delta) => {
+    if (animate) material.uniforms.uTime.value += delta;
+    const target = selected || hot ? 1 : 0;
+    material.uniforms.uSelect.value = THREE.MathUtils.damp(
+      material.uniforms.uSelect.value,
+      target,
+      6,
+      delta,
+    );
+  });
+
+  return (
+    <mesh material={material}>
+      <sphereGeometry args={[radius, 64, 48]} />
+    </mesh>
+  );
+}
+
+function Ring({
+  inner,
+  outer,
+  texture,
+  animate,
+}: {
+  inner: number;
+  outer: number;
+  texture: THREE.Texture | null;
+  animate: boolean;
+}) {
+  const material = useMemo(() => {
+    return new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      uniforms: {
+        uMap: { value: texture },
+        uHasMap: { value: texture ? 1 : 0 },
+        uSunPos: { value: new THREE.Vector3(0, 0, 0) },
+        uTime: { value: 0 },
+        uInner: { value: inner },
+        uOuter: { value: outer },
+      },
+      vertexShader: /* glsl */ `
+        varying vec3 vWorldPos;
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          vec4 world = modelMatrix * vec4(position, 1.0);
+          vWorldPos = world.xyz;
+          gl_Position = projectionMatrix * viewMatrix * world;
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        precision highp float;
+        varying vec3 vWorldPos;
+        varying vec2 vUv;
+        uniform sampler2D uMap;
+        uniform float uHasMap;
+        uniform vec3 uSunPos;
+        uniform float uTime;
+        uniform float uInner;
+        uniform float uOuter;
+
+        void main() {
+          vec2 p = vUv * 2.0 - 1.0;
+          float r = length(p);
+          float t = clamp((r - uInner / uOuter) / (1.0 - uInner / uOuter), 0.0, 1.0);
+          // ringGeometry uv maps radial differently — use distance from center in plane
+          float radial = (r - (uInner / uOuter)) / max(1e-4, 1.0 - (uInner / uOuter));
+          radial = clamp(radial, 0.0, 1.0);
+
+          float alpha = 0.0;
+          vec3 color = vec3(0.92, 0.86, 0.72);
+          if (uHasMap > 0.5) {
+            vec4 tex = texture2D(uMap, vec2(radial, 0.5));
+            color = tex.rgb;
+            alpha = tex.a;
+          } else {
+            alpha = smoothstep(0.0, 0.08, radial) * smoothstep(1.0, 0.9, radial);
+          }
+
+          float lit = 0.55 + 0.45 * max(dot(normalize(uSunPos - vWorldPos), vec3(0.0, 1.0, 0.0)), 0.0);
+          float shimmer = 0.92 + 0.08 * sin(radial * 40.0 - uTime * 0.4);
+          alpha *= 0.92 * shimmer;
+          gl_FragColor = vec4(color * lit, alpha);
+        }
+      `,
+    });
+  }, [texture, inner, outer]);
+
+  useEffect(() => () => material.dispose(), [material]);
+
+  useFrame((_, delta) => {
+    if (animate) material.uniforms.uTime.value += delta;
+  });
+
+  return (
+    <mesh rotation={[Math.PI / 2.15, 0, 0]} material={material}>
+      <ringGeometry args={[inner, outer, 128]} />
+    </mesh>
+  );
 }
 
 function Moon({ moon, animate }: { moon: MoonSpec; animate: boolean }) {
   const pivot = useRef<THREE.Group>(null);
   const angle = useRef(moon.phase);
   const texture = useMemo(() => makePlanetTexture("Moon"), []);
+
+  useEffect(() => () => texture?.dispose(), [texture]);
 
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.05);
@@ -430,10 +923,17 @@ function Moon({ moon, animate }: { moon: MoonSpec; animate: boolean }) {
 
   return (
     <group ref={pivot} rotation={[0, moon.phase, 0]}>
-      <mesh position={[moon.distance, 0, 0]}>
-        <sphereGeometry args={[moon.radius, 24, 16]} />
-        <meshStandardMaterial map={texture} color="white" roughness={0.94} metalness={0} />
-      </mesh>
+      <group position={[moon.distance, 0, 0]}>
+        <PlanetBody
+          name="Moon"
+          radius={moon.radius}
+          texture={texture}
+          selected={false}
+          hot={false}
+          animate={animate}
+          gas={false}
+        />
+      </group>
     </group>
   );
 }
@@ -442,26 +942,36 @@ function Planet({
   spec,
   animate,
   selected,
+  anyFocused,
   nodes,
   onSelect,
 }: {
   spec: PlanetSpec;
   animate: boolean;
   selected: boolean;
+  anyFocused: boolean;
   nodes: { current: Record<string, THREE.Object3D> };
   onSelect: (name: string) => void;
 }) {
   const pivot = useRef<THREE.Group>(null);
   const spin = useRef<THREE.Group>(null);
-  const body = useRef<THREE.Mesh>(null);
+  const body = useRef<THREE.Group>(null);
   const angle = useRef(spec.phase);
   const [hot, setHot] = useState(false);
   const texture = useMemo(() => makePlanetTexture(spec.name), [spec.name]);
   const ringTexture = useMemo(() => (spec.ring ? makeRingTexture() : null), [spec.ring]);
+  const gas = spec.name === "Jupiter" || spec.name === "Saturn" || spec.name === "Uranus" || spec.name === "Neptune";
 
   useLayoutEffect(() => {
     if (body.current) nodes.current[spec.name] = body.current;
   }, [nodes, spec.name]);
+
+  useEffect(() => {
+    return () => {
+      texture?.dispose();
+      ringTexture?.dispose();
+    };
+  }, [texture, ringTexture]);
 
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.05);
@@ -484,55 +994,47 @@ function Planet({
     document.body.style.cursor = "";
   };
 
+  const dim = anyFocused && !selected ? 1 : 0;
+
   return (
     <group rotation={[spec.inclination, 0, 0]}>
-      <OrbitLine radius={spec.distance} />
+      <OrbitLine radius={spec.distance} dim={dim} animate={animate} />
       <group ref={pivot} rotation={[0, spec.phase, 0]}>
         <group position={[spec.distance, 0, 0]}>
           <group ref={spin} rotation={[0, 0, spec.axial]}>
-            <mesh ref={body}>
-              <sphereGeometry args={[spec.radius, 32, 24]} />
-              <meshStandardMaterial
-                map={texture}
-                color="white"
-                emissive={spec.color}
-                emissiveIntensity={selected || hot ? 0.22 : 0}
-                roughness={spec.name === "Jupiter" || spec.name === "Saturn" ? 0.55 : 0.86}
-                metalness={0.02}
+            <group ref={body}>
+              <PlanetBody
+                name={spec.name}
+                radius={spec.radius}
+                texture={texture}
+                selected={selected}
+                hot={hot}
+                animate={animate}
+                gas={gas}
               />
-            </mesh>
-            {spec.name === "Earth" ? (
-              <mesh>
-                <sphereGeometry args={[spec.radius * 1.08, 24, 16]} />
-                <meshBasicMaterial
-                  color={COLOR.earth}
-                  transparent
-                  opacity={0.16}
-                  depthWrite={false}
-                  blending={THREE.AdditiveBlending}
+              {spec.atmosphere ? (
+                <Atmosphere
+                  radius={spec.radius}
+                  color={spec.atmosphere}
+                  intensity={spec.name === "Earth" ? 0.55 : 0.32}
+                  animate={animate}
+                  selected={selected || hot}
                 />
-              </mesh>
-            ) : null}
+              ) : null}
+            </group>
             <mesh onClick={choose} onPointerOver={over} onPointerOut={out}>
               <sphereGeometry args={[Math.max(spec.radius * 2.4, 1.15), 16, 16]} />
               <meshBasicMaterial transparent opacity={0} depthWrite={false} />
             </mesh>
             {spec.ring ? (
-              <mesh
-                rotation={[Math.PI / 2.15, 0, 0]}
-                onClick={choose}
-                onPointerOver={over}
-                onPointerOut={out}
-              >
-                <ringGeometry args={[spec.ring.inner, spec.ring.outer, 96]} />
-                <meshBasicMaterial
-                  map={ringTexture}
-                  color="white"
-                  side={THREE.DoubleSide}
-                  transparent
-                  opacity={0.92}
+              <group onClick={choose} onPointerOver={over} onPointerOut={out}>
+                <Ring
+                  inner={spec.ring.inner}
+                  outer={spec.ring.outer}
+                  texture={ringTexture}
+                  animate={animate}
                 />
-              </mesh>
+              </group>
             ) : null}
           </group>
           {spec.moons?.map((moon) => (
@@ -544,167 +1046,119 @@ function Planet({
   );
 }
 
-function makeSunTexture() {
-  const canvas = document.createElement("canvas");
-  canvas.width = 512;
-  canvas.height = 256;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return null;
-  const { width: w, height: h } = canvas;
-
-  const base = ctx.createLinearGradient(0, 0, 0, h);
-  base.addColorStop(0, "#ffd27a");
-  base.addColorStop(0.5, "#ffe7a8");
-  base.addColorStop(1, "#ffc56a");
-  ctx.fillStyle = base;
-  ctx.fillRect(0, 0, w, h);
-
-  for (let i = 0; i < 1600; i++) {
-    const hot = hash(i * 1.3) > 0.46;
-    ctx.fillStyle = hot
-      ? `rgba(255, 250, 230, ${0.16 + hash(i + 2) * 0.38})`
-      : `rgba(196, 78, 12, ${0.1 + hash(i + 5) * 0.28})`;
-    ctx.beginPath();
-    ctx.arc(
-      hash(i + 11) * w,
-      hash(i + 17) * h,
-      0.8 + hash(i + 23) * 2.8,
-      0,
-      Math.PI * 2,
-    );
-    ctx.fill();
-  }
-
-  const spots = [
-    [0.28, 0.46, 9],
-    [0.31, 0.5, 5],
-    [0.62, 0.38, 7],
-    [0.66, 0.42, 4],
-    [0.48, 0.62, 5],
-  ] as const;
-  for (const [u, v, radius] of spots) {
-    const x = u * w;
-    const y = v * h;
-    ctx.fillStyle = "rgba(232, 120, 28, 0.55)";
-    ctx.beginPath();
-    ctx.ellipse(x, y, radius * 2.1, radius * 1.35, hash(x) * 0.6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "rgba(92, 28, 8, 0.82)";
-    ctx.beginPath();
-    ctx.ellipse(x, y, radius, radius * 0.72, hash(y) * 0.6, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 8;
-  return texture;
-}
-
-function makeGlowTexture(inner: number) {
-  const size = 256;
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return null;
-  const c = size / 2;
-  const glow = ctx.createRadialGradient(c, c, c * inner, c, c, c);
-  glow.addColorStop(0, "rgba(255, 236, 190, 0)");
-  glow.addColorStop(0.08, "rgba(255, 214, 120, 0.9)");
-  glow.addColorStop(0.28, "rgba(255, 140, 36, 0.28)");
-  glow.addColorStop(0.62, "rgba(255, 90, 12, 0.06)");
-  glow.addColorStop(1, "rgba(255, 60, 0, 0)");
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, size, size);
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  return texture;
-}
-
 function Sun({ animate }: { animate: boolean }) {
   const surface = useRef<THREE.Mesh>(null);
-  const texture = useMemo(() => makeSunTexture(), []);
   const limb = useMemo(() => makeGlowTexture(0.42), []);
-  const corona = useMemo(() => makeGlowTexture(0.3), []);
+  const corona = useMemo(() => makeGlowTexture(0.28), []);
+  const haze = useMemo(() => makeGlowTexture(0.18), []);
+
   const material = useMemo(() => {
-    if (!texture) return null;
-    const mat = new THREE.MeshBasicMaterial({
-      map: texture,
-      color: 0xffffff,
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+      },
+      vertexShader: /* glsl */ `
+        varying vec3 vNormalV;
+        varying vec3 vPos;
+        void main() {
+          vPos = position;
+          vNormalV = normalize(normalMatrix * normal);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        precision highp float;
+        varying vec3 vNormalV;
+        varying vec3 vPos;
+        uniform float uTime;
+        ${NOISE_GLSL}
+        void main() {
+          vec3 nrm = normalize(vNormalV);
+          float mu = clamp(nrm.z, 0.0, 1.0);
+          float limb = pow(mu, 0.42);
+
+          vec3 p = normalize(vPos) * 2.4;
+          float n1 = fbm(p + vec3(uTime * 0.035, uTime * 0.02, -uTime * 0.015));
+          float n2 = fbm(p * 2.2 + vec3(-uTime * 0.05, uTime * 0.03, uTime * 0.02));
+          float gran = 0.55 + 0.45 * n1;
+          float spot = smoothstep(0.35, 0.75, n2);
+
+          vec3 core = vec3(1.0, 0.93, 0.62);
+          vec3 mid = vec3(1.0, 0.62, 0.18);
+          vec3 edge = vec3(0.72, 0.14, 0.02);
+          vec3 col = mix(mid, core, gran);
+          col = mix(col, vec3(0.45, 0.1, 0.02), spot * 0.55);
+          col = mix(edge, col, smoothstep(0.0, 0.85, limb));
+          col *= 0.72 + 0.55 * limb;
+          col += vec3(1.0, 0.7, 0.25) * pow(limb, 8.0) * 0.35;
+
+          gl_FragColor = vec4(col, 1.0);
+        }
+      `,
       toneMapped: false,
     });
-    mat.customProgramCacheKey = () => "sun-photosphere";
-    mat.onBeforeCompile = (shader) => {
-      shader.vertexShader = shader.vertexShader
-        .replace(
-          "#include <common>",
-          "varying vec3 vSunNormal;\n#include <common>",
-        )
-        .replace(
-          "#include <project_vertex>",
-          "vSunNormal = normalize(mat3(modelViewMatrix) * normal);\n#include <project_vertex>",
-        );
-      shader.fragmentShader = shader.fragmentShader
-        .replace("#include <common>", "varying vec3 vSunNormal;\n#include <common>")
-        .replace(
-          "#include <opaque_fragment>",
-          `
-          float mu = clamp(normalize(vSunNormal).z, 0.0, 1.0);
-          float limb = pow(mu, 0.45);
-          vec3 edge = vec3(0.62, 0.12, 0.015);
-          outgoingLight = mix(edge, outgoingLight, smoothstep(0.0, 0.8, limb));
-          outgoingLight *= 0.78 + 0.4 * limb;
-          #include <opaque_fragment>
-          `,
-        );
-    };
-    return mat;
-  }, [texture]);
+  }, []);
 
   useEffect(() => {
     return () => {
-      texture?.dispose();
+      material.dispose();
       limb?.dispose();
       corona?.dispose();
-      material?.dispose();
+      haze?.dispose();
     };
-  }, [texture, limb, corona, material]);
+  }, [material, limb, corona, haze]);
 
   useFrame((_, delta) => {
-    if (surface.current && animate) surface.current.rotation.y += Math.min(delta, 0.05) * 0.035;
+    const dt = Math.min(delta, 0.05);
+    if (animate) {
+      material.uniforms.uTime.value += dt;
+      if (surface.current) surface.current.rotation.y += dt * 0.04;
+    }
   });
 
   return (
     <group>
-      <mesh ref={surface} material={material ?? undefined}>
-        <sphereGeometry args={[0.5, 64, 48]} />
-        {material ? null : <meshBasicMaterial color={COLOR.sun} toneMapped={false} />}
+      <mesh ref={surface} material={material}>
+        <sphereGeometry args={[0.5, 96, 64]} />
       </mesh>
       {limb ? (
-        <sprite scale={[2.05, 2.05, 1]}>
+        <sprite scale={[2.15, 2.15, 1]}>
           <spriteMaterial
             map={limb}
             transparent
             depthWrite={false}
             blending={THREE.AdditiveBlending}
             toneMapped={false}
+            opacity={0.95}
           />
         </sprite>
       ) : null}
       {corona ? (
-        <sprite scale={[3.1, 3.1, 1]}>
+        <sprite scale={[3.4, 3.4, 1]}>
           <spriteMaterial
             map={corona}
             transparent
             depthWrite={false}
             blending={THREE.AdditiveBlending}
             toneMapped={false}
-            opacity={0.85}
+            opacity={0.8}
           />
         </sprite>
       ) : null}
-      <pointLight color={COLOR.sunLight} intensity={140} decay={2} distance={0} />
+      {haze ? (
+        <sprite scale={[5.2, 5.2, 1]}>
+          <spriteMaterial
+            map={haze}
+            transparent
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+            toneMapped={false}
+            opacity={0.45}
+          />
+        </sprite>
+      ) : null}
+      <pointLight color={COLOR.sunLight} intensity={160} decay={2} distance={0} />
+      <pointLight color="#ffb060" intensity={28} decay={2} distance={18} />
     </group>
   );
 }
@@ -741,8 +1195,6 @@ function CameraFit({ rest }: { rest: { current: RestPose } }) {
       orbit.target.set(0, FOCUS_Y, 0);
       orbit.update();
     }
-    // Only refit when the layout bucket changes, so a mobile toolbar resize
-    // does not snap the orrery back while it is turning.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bucket, camera, controls]);
 
@@ -790,6 +1242,7 @@ function CameraRig({
   const homeOffset = useRef(new THREE.Vector3(0.4, 13.5, 30));
   const homeTarget = useRef(new THREE.Vector3(0, FOCUS_Y, 0));
   const timer = useRef(0);
+  const overlayOpacity = useRef(0);
 
   useEffect(() => {
     const orbit = isOrbit(controls) ? controls : null;
@@ -860,7 +1313,7 @@ function CameraRig({
   useFrame((_, raw) => {
     const dt = Math.min(raw, 0.05);
     const rig = isOrbit(controls) ? controls : null;
-    const blend = animate ? 1 - Math.exp(-3.4 * dt) : 1;
+    const blend = animate ? 1 - Math.exp(-3.2 * dt) : 1;
 
     if (mode.current === "snap" && rig) {
       const offset = camera.position.clone().sub(rig.target);
@@ -897,6 +1350,12 @@ function CameraRig({
         const visible = projected.z < 1;
         const card = overlay.card;
         const wrap = overlay.wrap;
+        overlayOpacity.current = THREE.MathUtils.damp(
+          overlayOpacity.current,
+          visible ? 1 : 0,
+          8,
+          dt,
+        );
         if (overlay.line && overlay.dot && overlay.svg && card && wrap) {
           const wrapBox = wrap.getBoundingClientRect();
           const cardBox = card.getBoundingClientRect();
@@ -911,9 +1370,12 @@ function CameraRig({
           overlay.line.setAttribute("y2", String(y));
           overlay.dot.setAttribute("cx", String(x));
           overlay.dot.setAttribute("cy", String(y));
-          overlay.svg.style.opacity = visible ? "1" : "0";
+          overlay.svg.style.opacity = String(overlayOpacity.current);
         }
       }
+    } else {
+      overlayOpacity.current = THREE.MathUtils.damp(overlayOpacity.current, 0, 10, dt);
+      if (overlay.svg) overlay.svg.style.opacity = String(overlayOpacity.current);
     }
 
     if (mode.current === "return") {
@@ -946,8 +1408,25 @@ function CameraRig({
   return null;
 }
 
+function PostFX({ reduced }: { reduced: boolean }) {
+  if (reduced) return null;
+  return (
+    <EffectComposer multisampling={0}>
+      <Bloom
+        intensity={1.15}
+        luminanceThreshold={0.72}
+        luminanceSmoothing={0.28}
+        mipmapBlur
+        radius={0.65}
+      />
+      <Vignette offset={0.22} darkness={0.62} />
+    </EffectComposer>
+  );
+}
+
 function Scene({
   animate,
+  reduced,
   focused,
   onSelect,
   nodes,
@@ -957,6 +1436,7 @@ function Scene({
   overlay,
 }: {
   animate: boolean;
+  reduced: boolean;
   focused: string | null;
   onSelect: (name: string) => void;
   nodes: { current: Record<string, THREE.Object3D> };
@@ -968,8 +1448,10 @@ function Scene({
   return (
     <>
       <color attach="background" args={[COLOR.bg]} />
-      <ambientLight intensity={0.28} />
-      <directionalLight position={[9, 12, 7]} intensity={0.85} color="#f4f4f4" />
+      <fog attach="fog" args={["#010101", 48, 118]} />
+      <ambientLight intensity={0.12} />
+      <directionalLight position={[9, 12, 7]} intensity={0.22} color="#f4f4f4" />
+      <Starfield animate={animate} />
       <Sun animate={animate} />
       {PLANETS.map((planet) => (
         <Planet
@@ -977,6 +1459,7 @@ function Scene({
           spec={planet}
           animate={animate}
           selected={focused === planet.name}
+          anyFocused={!!focused}
           nodes={nodes}
           onSelect={onSelect}
         />
@@ -987,10 +1470,10 @@ function Scene({
         enablePan={false}
         enableZoom={false}
         autoRotate={animate && !focused}
-        autoRotateSpeed={0.32}
+        autoRotateSpeed={0.28}
         enableDamping
-        dampingFactor={0.08}
-        rotateSpeed={0.45}
+        dampingFactor={0.065}
+        rotateSpeed={0.42}
         minPolarAngle={Math.PI / 5.2}
         maxPolarAngle={Math.PI / 1.85}
         touches={{ ONE: TOUCH.PAN, TWO: TOUCH.DOLLY_PAN }}
@@ -1004,7 +1487,58 @@ function Scene({
         nodes={nodes}
         overlay={overlay}
       />
+      <PostFX reduced={reduced} />
     </>
+  );
+}
+
+function FocusCard({
+  name,
+  open,
+  onClose,
+  cardRef,
+}: {
+  name: string;
+  open: boolean;
+  onClose: () => void;
+  cardRef: (node: HTMLElement | null) => void;
+}) {
+  const fact = FACTS[name];
+  if (!fact) return null;
+
+  return (
+    <article
+      ref={cardRef}
+      role="dialog"
+      aria-label={name}
+      aria-hidden={!open}
+      className={`absolute top-28 left-5 z-20 w-[min(18rem,calc(100%-6.5rem))] border border-line bg-bg/90 p-5 backdrop-blur-md sm:top-32 sm:left-14 transition-[opacity,transform] duration-500 ease-out ${
+        open ? "opacity-100 translate-y-0" : "pointer-events-none opacity-0 translate-y-3"
+      }`}
+    >
+      <p className="text-xs tracking-widest text-muted uppercase transition-opacity duration-500">
+        Planet
+      </p>
+      <h2 className="mt-2 text-2xl font-medium tracking-wide">{name}</h2>
+      <p className="mt-3 text-sm leading-relaxed text-muted">{fact.line}</p>
+      <dl className="mt-5 grid grid-cols-2 gap-4">
+        {fact.stats.map(([label, value]) => (
+          <div key={label} className="transition-opacity duration-500">
+            <dt className="text-xs tracking-widest text-muted uppercase">{label}</dt>
+            <dd className="mt-1 text-sm">{value}</dd>
+          </div>
+        ))}
+      </dl>
+      <button
+        type="button"
+        onClick={onClose}
+        tabIndex={open ? 0 : -1}
+        className="mt-6 inline-flex h-11 items-center gap-2 border border-line px-4 text-sm tracking-wide transition-colors duration-200 hover:bg-fg/10 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-4 focus-visible:outline-fg"
+      >
+        <X className="h-4 w-4" aria-hidden />
+        Close
+      </button>
+    </article>
   );
 }
 
@@ -1012,6 +1546,7 @@ export function SolarSystem({ onReady }: { onReady?: () => void }) {
   const reduced = usePrefersReducedMotion();
   const [visible, setVisible] = useState(false);
   const [focused, setFocused] = useState<string | null>(null);
+  const [panel, setPanel] = useState<{ name: string; open: boolean } | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const nodes = useRef<Record<string, THREE.Object3D>>({});
   const api = useRef<CameraApi | null>(null);
@@ -1030,6 +1565,18 @@ export function SolarSystem({ onReady }: { onReady?: () => void }) {
   });
   const focusedRef = useRef<string | null>(null);
   focusedRef.current = focused;
+
+  useEffect(() => {
+    if (focused) {
+      setPanel({ name: focused, open: true });
+      return;
+    }
+    if (!panel) return;
+    setPanel((current) => (current ? { ...current, open: false } : null));
+    const hide = window.setTimeout(() => setPanel(null), 480);
+    return () => window.clearTimeout(hide);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focused]);
 
   const select = (name: string) => {
     const next = focusedRef.current === name ? null : name;
@@ -1060,7 +1607,9 @@ export function SolarSystem({ onReady }: { onReady?: () => void }) {
         api.current?.armSnap();
         return;
       }
-      const atRest = Math.abs(live.current.distance - live.current.rest) < Math.max(0.45, live.current.rest * 0.03);
+      const atRest =
+        Math.abs(live.current.distance - live.current.rest) <
+        Math.max(0.45, live.current.rest * 0.03);
       if (event.deltaY > 0 && atRest) return;
       event.preventDefault();
       api.current?.dolly(event.deltaY);
@@ -1109,12 +1658,12 @@ export function SolarSystem({ onReady }: { onReady?: () => void }) {
     };
   }, []);
 
-  const fact = focused ? FACTS[focused] : null;
-
   return (
     <div
       ref={wrapRef}
-      className={`absolute inset-0 touch-pan-y transition-opacity duration-700 ${visible ? "opacity-100" : "opacity-0"}`}
+      className={`absolute inset-0 touch-pan-y transition-opacity duration-[1100ms] ease-out ${
+        visible ? "opacity-100" : "opacity-0"
+      }`}
     >
       <Canvas
         camera={{ position: [0.4, 16, 30], fov: 40, near: 0.1, far: 240 }}
@@ -1124,8 +1673,12 @@ export function SolarSystem({ onReady }: { onReady?: () => void }) {
           antialias: true,
           alpha: false,
           powerPreference: "high-performance",
+          toneMapping: THREE.ACESFilmicToneMapping,
+          toneMappingExposure: 1.05,
         }}
-        onCreated={() => {
+        onCreated={({ gl }) => {
+          gl.toneMapping = THREE.ACESFilmicToneMapping;
+          gl.toneMappingExposure = 1.05;
           setVisible(true);
           onReady?.();
         }}
@@ -1136,6 +1689,7 @@ export function SolarSystem({ onReady }: { onReady?: () => void }) {
       >
         <Scene
           animate={!reduced}
+          reduced={reduced}
           focused={focused}
           onSelect={select}
           nodes={nodes}
@@ -1146,13 +1700,15 @@ export function SolarSystem({ onReady }: { onReady?: () => void }) {
         />
       </Canvas>
 
-      {focused && fact ? (
+      {panel ? (
         <>
           <svg
             ref={(node) => {
               overlay.current.svg = node;
             }}
-            className="pointer-events-none absolute inset-0 h-full w-full opacity-0"
+            className={`pointer-events-none absolute inset-0 h-full w-full transition-opacity duration-500 ${
+              panel.open ? "opacity-100" : "opacity-0"
+            }`}
             aria-hidden
           >
             <line
@@ -1161,6 +1717,7 @@ export function SolarSystem({ onReady }: { onReady?: () => void }) {
               }}
               stroke="white"
               strokeWidth="1"
+              strokeOpacity="0.85"
             />
             <circle
               ref={(node) => {
@@ -1170,34 +1727,14 @@ export function SolarSystem({ onReady }: { onReady?: () => void }) {
               fill="white"
             />
           </svg>
-          <article
-            ref={(node) => {
+          <FocusCard
+            name={panel.name}
+            open={panel.open}
+            onClose={close}
+            cardRef={(node) => {
               overlay.current.card = node;
             }}
-            role="dialog"
-            aria-label={focused}
-            className="absolute top-28 left-5 z-20 w-[min(18rem,calc(100%-6.5rem))] border border-line bg-bg p-5 sm:top-32 sm:left-14"
-          >
-            <p className="text-xs tracking-widest text-muted uppercase">Planet</p>
-            <h2 className="mt-2 text-2xl font-medium tracking-wide">{focused}</h2>
-            <p className="mt-3 text-sm leading-relaxed text-muted">{fact.line}</p>
-            <dl className="mt-5 grid grid-cols-2 gap-4">
-              {fact.stats.map(([label, value]) => (
-                <div key={label}>
-                  <dt className="text-xs tracking-widest text-muted uppercase">{label}</dt>
-                  <dd className="mt-1 text-sm">{value}</dd>
-                </div>
-              ))}
-            </dl>
-            <button
-              type="button"
-              onClick={close}
-              className="mt-6 inline-flex h-11 items-center gap-2 border border-line px-4 text-sm tracking-wide transition-colors duration-200 hover:bg-fg/10 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-4 focus-visible:outline-fg"
-            >
-              <X className="h-4 w-4" aria-hidden />
-              Close
-            </button>
-          </article>
+          />
         </>
       ) : null}
     </div>
