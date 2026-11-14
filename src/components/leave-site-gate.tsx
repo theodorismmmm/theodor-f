@@ -94,7 +94,7 @@ export function LeaveSiteProvider({ children }: { children: ReactNode }) {
       {children}
       {pendingHref ? (
         <div
-          className="fixed inset-0 z-[80] flex items-end justify-center bg-bg/70 px-6 py-10 backdrop-blur-sm sm:items-center"
+          className="dialog-backdrop fixed inset-0 z-[80] flex items-end justify-center bg-bg/70 px-6 py-10 backdrop-blur-sm sm:items-center"
           role="presentation"
           onClick={close}
         >
@@ -102,7 +102,7 @@ export function LeaveSiteProvider({ children }: { children: ReactNode }) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="leave-site-title"
-            className="w-full max-w-md border border-line bg-bg p-6 shadow-none"
+            className="dialog-panel w-full max-w-md border border-line bg-bg p-6 shadow-none"
             onClick={(event) => event.stopPropagation()}
           >
             <p id="leave-site-title" className="text-xs tracking-widest text-muted uppercase">
@@ -118,21 +118,21 @@ export function LeaveSiteProvider({ children }: { children: ReactNode }) {
               <button
                 type="button"
                 onClick={continueLeave}
-                className="inline-flex h-11 items-center justify-center border border-line bg-fg px-4 text-sm tracking-wide text-bg transition-colors duration-200 hover:bg-fg/90 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-4 focus-visible:outline-fg"
+                className="action-press inline-flex h-11 items-center justify-center border border-line bg-fg px-4 text-sm tracking-wide text-bg hover:bg-fg/90 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-4 focus-visible:outline-fg"
               >
                 Continue
               </button>
               <button
                 type="button"
                 onClick={neverAgain}
-                className="inline-flex h-11 items-center justify-center border border-line px-4 text-sm tracking-wide text-fg transition-colors duration-200 hover:bg-fg/10 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-4 focus-visible:outline-fg"
+                className="action-press inline-flex h-11 items-center justify-center border border-line px-4 text-sm tracking-wide text-fg hover:bg-fg/10 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-4 focus-visible:outline-fg"
               >
                 Don&apos;t show again
               </button>
               <button
                 type="button"
                 onClick={close}
-                className="inline-flex h-11 items-center justify-center border border-transparent px-4 text-sm tracking-wide text-muted transition-colors duration-200 hover:text-fg focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-4 focus-visible:outline-fg"
+                className="action-press inline-flex h-11 items-center justify-center border border-transparent px-4 text-sm tracking-wide text-muted hover:text-fg focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-4 focus-visible:outline-fg"
               >
                 Stay
               </button>

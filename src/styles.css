@@ -7,6 +7,8 @@
   --color-line: #ffffff38;
   --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
   --tracking-brand: 0.32em;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @layer base {
@@ -60,10 +62,10 @@
 
   .fade-rise {
     opacity: 0;
-    transform: translate3d(0, 1.25rem, 0);
+    transform: translate3d(0, 1.35rem, 0);
     transition:
-      opacity 700ms cubic-bezier(0.22, 1, 0.36, 1),
-      transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+      opacity 820ms var(--ease-out-soft),
+      transform 820ms var(--ease-out-soft);
     transition-delay: var(--fade-delay, 0ms);
     will-change: opacity, transform;
   }
@@ -73,12 +75,29 @@
     transform: translate3d(0, 0, 0);
   }
 
+  .fade-scale {
+    opacity: 0;
+    transform: translate3d(0, 1rem, 0) scale(0.985);
+    transition:
+      opacity 900ms var(--ease-out-expo),
+      transform 900ms var(--ease-out-expo);
+    transition-delay: var(--fade-delay, 0ms);
+    will-change: opacity, transform;
+  }
+
+  .fade-scale.is-visible {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
   .tab-fade > li {
     opacity: 0;
-    transform: translate3d(0, 0.85rem, 0);
+    transform: translate3d(0, 1rem, 0);
     transition:
-      opacity 520ms cubic-bezier(0.22, 1, 0.36, 1),
-      transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
+      opacity 560ms var(--ease-out-soft),
+      transform 560ms var(--ease-out-soft),
+      border-color 320ms ease,
+      background-color 320ms ease;
   }
 
   .tab-fade.is-visible > li {
@@ -86,12 +105,187 @@
     transform: translate3d(0, 0, 0);
   }
 
+  .skill-card {
+    transition:
+      transform 420ms var(--ease-out-soft),
+      border-color 320ms ease,
+      background-color 320ms ease;
+  }
+
+  .skill-card:hover {
+    transform: translate3d(0, -4px, 0);
+    border-color: #ffffff55;
+    background-color: color-mix(in srgb, var(--color-bg) 72%, transparent);
+  }
+
+  .skill-logo {
+    transition: transform 520ms var(--ease-out-soft), filter 520ms ease;
+  }
+
+  .skill-card:hover .skill-logo {
+    transform: translate3d(0, -2px, 0) scale(1.04);
+    filter: brightness(1.08);
+  }
+
+  .brand-letter {
+    display: inline-block;
+    opacity: 0;
+    transform: translate3d(0, 0.55em, 0);
+    transition:
+      opacity 700ms var(--ease-out-expo),
+      transform 700ms var(--ease-out-expo);
+    transition-delay: var(--letter-delay, 0ms);
+  }
+
+  .brand-letter.is-visible {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+
+  .hero-cta {
+    opacity: 0;
+    transform: translate3d(0, 0.85rem, 0);
+    transition:
+      opacity 700ms var(--ease-out-soft),
+      transform 700ms var(--ease-out-soft),
+      background-color 220ms ease,
+      border-color 220ms ease;
+    transition-delay: var(--cta-delay, 0ms);
+  }
+
+  .hero-cta.is-visible {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+
+  .action-press {
+    transition:
+      transform 280ms var(--ease-out-soft),
+      background-color 220ms ease,
+      border-color 220ms ease,
+      color 220ms ease;
+  }
+
+  .action-press:hover {
+    transform: translate3d(0, -2px, 0);
+  }
+
+  .action-press:active {
+    transform: translate3d(0, 0, 0);
+  }
+
+  .loader-line {
+    transform-origin: left center;
+    animation: loader-breathe 1.8s var(--ease-out-soft) infinite;
+  }
+
+  .loader-line.is-done {
+    animation: none;
+  }
+
+  @keyframes loader-breathe {
+    0%,
+    100% {
+      opacity: 0.55;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  .dialog-backdrop {
+    opacity: 0;
+    animation: dialog-backdrop-in 280ms var(--ease-out-soft) forwards;
+  }
+
+  .dialog-panel {
+    opacity: 0;
+    transform: translate3d(0, 1.25rem, 0) scale(0.98);
+    animation: dialog-panel-in 420ms var(--ease-out-expo) 40ms forwards;
+  }
+
+  @keyframes dialog-backdrop-in {
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes dialog-panel-in {
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+  }
+
+  .build-badge {
+    opacity: 0;
+    transform: translate3d(0, 0.4rem, 0);
+    animation: build-badge-in 900ms var(--ease-out-soft) 1.1s forwards;
+  }
+
+  @keyframes build-badge-in {
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  .tab-indicator {
+    position: absolute;
+    bottom: 0;
+    height: 1px;
+    background: var(--color-fg);
+    transition:
+      left 420ms var(--ease-out-expo),
+      width 420ms var(--ease-out-expo);
+  }
+
+  .page-sheen {
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    background: radial-gradient(
+      120% 60% at 50% -10%,
+      rgba(255, 255, 255, 0.045),
+      transparent 55%
+    );
+    opacity: 0;
+    animation: page-sheen-in 1.6s var(--ease-out-soft) 0.2s forwards;
+  }
+
+  @keyframes page-sheen-in {
+    to {
+      opacity: 1;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .fade-rise,
-    .tab-fade > li {
+    .fade-scale,
+    .tab-fade > li,
+    .brand-letter,
+    .hero-cta,
+    .dialog-backdrop,
+    .dialog-panel,
+    .build-badge,
+    .page-sheen {
       opacity: 1;
       transform: none;
+      animation: none;
       transition: none;
+    }
+
+    .skill-card:hover,
+    .skill-card:hover .skill-logo,
+    .action-press:hover,
+    .action-press:active {
+      transform: none;
+      filter: none;
+    }
+
+    .loader-line {
+      animation: none;
     }
   }
 }
