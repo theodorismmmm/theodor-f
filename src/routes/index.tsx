@@ -1,8 +1,9 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { ClientOnly, createFileRoute } from "@tanstack/react-router";
-import { githubUrl, gmailComposeUrl, mailtoUrl } from "@/lib/links";
+import { ExternalLink, LeaveSiteProvider, useLeaveSite } from "@/components/leave-site-gate";
 import { SiteStars } from "@/components/site-stars";
 import { Skills } from "@/components/skills";
+import { githubUrl, gmailComposeUrl, mailtoUrl, xUrl } from "@/lib/links";
 
 if (typeof window !== "undefined") {
   void import("@/components/solar-system");
@@ -22,6 +23,7 @@ const actionClass =
 function EmailMe({ label }: { label: string }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const { requestLeave } = useLeaveSite();
 
   useEffect(() => {
     if (!open) return;
@@ -47,22 +49,28 @@ function EmailMe({ label }: { label: string }) {
           aria-label="Email"
           className="absolute bottom-full left-1/2 z-10 mb-3 flex w-max -translate-x-1/2 flex-col border border-line bg-bg"
         >
-          <a
+          <button
+            type="button"
             role="menuitem"
-            href={gmailComposeUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-4 py-3 text-sm tracking-wide whitespace-nowrap transition-colors duration-200 hover:bg-fg/10 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-[-1px] focus-visible:outline-fg"
+            className="px-4 py-3 text-left text-sm tracking-wide whitespace-nowrap transition-colors duration-200 hover:bg-fg/10 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-[-1px] focus-visible:outline-fg"
+            onClick={() => {
+              setOpen(false);
+              requestLeave(gmailComposeUrl);
+            }}
           >
             Open in Gmail
-          </a>
-          <a
+          </button>
+          <button
+            type="button"
             role="menuitem"
-            href={mailtoUrl}
-            className="border-t border-line px-4 py-3 text-sm tracking-wide whitespace-nowrap transition-colors duration-200 hover:bg-fg/10 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-[-1px] focus-visible:outline-fg"
+            className="border-t border-line px-4 py-3 text-left text-sm tracking-wide whitespace-nowrap transition-colors duration-200 hover:bg-fg/10 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-[-1px] focus-visible:outline-fg"
+            onClick={() => {
+              setOpen(false);
+              requestLeave(mailtoUrl);
+            }}
           >
             Native email app
-          </a>
+          </button>
         </div>
       ) : null}
       <button
@@ -129,57 +137,60 @@ function Home() {
   const [ready, setReady] = useState(false);
 
   return (
-    <main className="relative isolate bg-bg text-fg">
-      <SiteStars />
-      <section className="relative z-10 h-dvh w-full overflow-hidden">
-        <ClientOnly fallback={null}>
-          <Suspense fallback={null}>
-            <SolarSystem onReady={() => setReady(true)} />
-          </Suspense>
-        </ClientOnly>
+    <LeaveSiteProvider>
+      <main className="relative isolate bg-bg text-fg">
+        <SiteStars />
+        <section className="relative z-10 h-dvh w-full overflow-hidden">
+          <ClientOnly fallback={null}>
+            <Suspense fallback={null}>
+              <SolarSystem onReady={() => setReady(true)} />
+            </Suspense>
+          </ClientOnly>
 
-        <SystemLoader done={ready} />
+          <SystemLoader done={ready} />
 
-        <header
-          className={`pointer-events-none absolute inset-x-0 top-0 z-30 flex justify-center px-6 pt-12 sm:pt-16 transition-opacity duration-700 ease-out ${
-            ready ? "opacity-100" : "opacity-0"
-          }`}
-        >
-          <h1 className="text-center text-2xl font-normal tracking-brand text-fg sm:text-4xl">
-            Theodor F.
-          </h1>
-        </header>
+          <header
+            className={`pointer-events-none absolute inset-x-0 top-0 z-30 flex justify-center px-6 pt-12 sm:pt-16 transition-opacity duration-700 ease-out ${
+              ready ? "opacity-100" : "opacity-0"
+            }`}
+          >
+            <h1 className="text-center text-2xl font-normal tracking-brand text-fg sm:text-4xl">
+              Theodor F.
+            </h1>
+          </header>
 
-        <div
-          className={`absolute inset-x-0 bottom-0 z-30 flex items-center justify-center px-6 pb-8 sm:pb-12 transition-opacity duration-700 ease-out delay-150 ${
-            ready ? "opacity-100" : "opacity-0"
-          }`}
-        >
-          <nav aria-label="Profiles" className="flex items-center justify-center gap-3">
-            <a
-              href={githubUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={actionClass}
+          <div
+            className={`absolute inset-x-0 bottom-0 z-30 flex items-center justify-center px-6 pb-8 sm:pb-12 transition-opacity duration-700 ease-out delay-150 ${
+              ready ? "opacity-100" : "opacity-0"
+            }`}
+          >
+            <nav
+              aria-label="Profiles"
+              className="flex flex-wrap items-center justify-center gap-3"
             >
-              GitHub
-            </a>
-            <EmailMe label="Email me" />
-          </nav>
-        </div>
-      </section>
-      <div className="relative z-10">
-        <Skills />
-        <section id="reach" className="px-6 pb-28 text-fg">
-          <div className="mx-auto w-full max-w-5xl border border-line bg-bg/80 px-6 py-10 backdrop-blur-sm sm:px-10">
-            <h2 className="text-lg font-medium tracking-wide">Feel free to reach out</h2>
-            <p className="mt-3 max-w-md text-sm text-muted">I can help with projects.</p>
-            <div className="mt-8">
-              <EmailMe label="Contact me" />
-            </div>
+              <ExternalLink href={githubUrl} className={actionClass}>
+                GitHub
+              </ExternalLink>
+              <ExternalLink href={xUrl} className={actionClass} aria-label="X profile">
+                X
+              </ExternalLink>
+              <EmailMe label="Email me" />
+            </nav>
           </div>
         </section>
-      </div>
-    </main>
+        <div className="relative z-10">
+          <Skills />
+          <section id="reach" className="px-6 pb-28 text-fg">
+            <div className="mx-auto w-full max-w-5xl border border-line bg-bg/80 px-6 py-10 backdrop-blur-sm sm:px-10">
+              <h2 className="text-lg font-medium tracking-wide">Feel free to reach out</h2>
+              <p className="mt-3 max-w-md text-sm text-muted">I can help with projects.</p>
+              <div className="mt-8">
+                <EmailMe label="Contact me" />
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+    </LeaveSiteProvider>
   );
 }
