@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { FadeIn } from "@/components/fade-in";
 
 function PythonLogo() {
   return (
@@ -90,41 +91,96 @@ const HARDWARE_SKILLS = [
 const TABS = ["Code", "Hardware"] as const;
 
 export function Skills() {
+  const sectionRef = useRef<HTMLElement>(null);
   const [tab, setTab] = useState<(typeof TABS)[number]>("Code");
+  const [entered, setEntered] = useState(false);
+  const [panelVisible, setPanelVisible] = useState(false);
+  const [reduced, setReduced] = useState(false);
+
+  useEffect(() => {
+    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const apply = () => setReduced(query.matches);
+    apply();
+    query.addEventListener("change", apply);
+    return () => query.removeEventListener("change", apply);
+  }, []);
+
+  useEffect(() => {
+    const node = sectionRef.current;
+    if (!node) return;
+    if (reduced) {
+      setEntered(true);
+      setPanelVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        setEntered(true);
+        setPanelVisible(true);
+        observer.disconnect();
+      },
+      { threshold: 0.14, rootMargin: "0px 0px -6% 0px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [reduced]);
+
+  const selectTab = (name: (typeof TABS)[number]) => {
+    if (name === tab) return;
+    if (reduced) {
+      setTab(name);
+      setPanelVisible(true);
+      return;
+    }
+    setPanelVisible(false);
+    window.setTimeout(() => {
+      setTab(name);
+      requestAnimationFrame(() => setPanelVisible(true));
+    }, 220);
+  };
+
+  const skills = tab === "Code" ? CODE_SKILLS : HARDWARE_SKILLS;
+  const showPanel = entered && panelVisible;
 
   return (
-    <section id="skills" className="px-6 py-24 text-fg sm:py-32">
+    <section ref={sectionRef} id="skills" className="px-6 py-24 text-fg sm:py-32">
       <div className="mx-auto w-full max-w-5xl">
-        <p className="text-xs tracking-widest text-muted uppercase">Skills</p>
-        <div role="tablist" aria-label="Skills" className="mt-6 flex gap-6">
-          {TABS.map((name) => {
-            const selected = tab === name;
-            return (
-              <button
-                key={name}
-                type="button"
-                role="tab"
-                id={`tab-${name}`}
-                aria-selected={selected}
-                aria-controls={`panel-${name}`}
-                onClick={() => setTab(name)}
-                className={`border-b pb-2 text-xs tracking-widest uppercase ${selected ? "border-fg text-fg" : "border-transparent text-muted"}`}
-              >
-                {name}
-              </button>
-            );
-          })}
-        </div>
+        <FadeIn>
+          <p className="text-xs tracking-widest text-muted uppercase">Skills</p>
+        </FadeIn>
+        <FadeIn delayMs={80}>
+          <div role="tablist" aria-label="Skills" className="mt-6 flex gap-6">
+            {TABS.map((name) => {
+              const selected = tab === name;
+              return (
+                <button
+                  key={name}
+                  type="button"
+                  role="tab"
+                  id={`tab-${name}`}
+                  aria-selected={selected}
+                  aria-controls={`panel-${name}`}
+                  onClick={() => selectTab(name)}
+                  className={`border-b pb-2 text-xs tracking-widest uppercase transition-colors duration-300 ${selected ? "border-fg text-fg" : "border-transparent text-muted"}`}
+                >
+                  {name}
+                </button>
+              );
+            })}
+          </div>
+        </FadeIn>
         <ul
           id={`panel-${tab}`}
           role="tabpanel"
           aria-labelledby={`tab-${tab}`}
-          className="mt-10 grid max-w-3xl gap-4 sm:grid-cols-2"
+          className={`mt-10 grid max-w-3xl gap-4 sm:grid-cols-2 tab-fade ${showPanel ? "is-visible" : ""}`}
         >
-          {(tab === "Code" ? CODE_SKILLS : HARDWARE_SKILLS).map((skill) => (
+          {skills.map((skill, index) => (
             <li
-              key={skill.name}
+              key={`${tab}-${skill.name}`}
               className="flex flex-col items-start border border-line bg-bg/80 px-6 py-8 backdrop-blur-sm"
+              style={{ transitionDelay: showPanel ? `${index * 70}ms` : "0ms" }}
             >
               {skill.logo}
               <h2 className="mt-8 text-lg font-medium tracking-wide">{skill.name}</h2>
