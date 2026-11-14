@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { FadeIn } from "@/components/fade-in";
 
 function PythonLogo() {
   return (
-    <svg viewBox="0.21 -0.077 110 110" className="h-16 w-16" aria-hidden>
+    <svg viewBox="0.21 -0.077 110 110" className="skill-logo h-16 w-16" aria-hidden>
       <defs>
         <linearGradient id="py-blue" x1="10" y1="0" x2="70" y2="70">
           <stop offset="0" stopColor="#5ba3d9" />
@@ -28,7 +28,7 @@ function PythonLogo() {
 
 function N8nLogo() {
   return (
-    <svg viewBox="0 0 24 24" className="h-16 w-16" aria-hidden>
+    <svg viewBox="0 0 24 24" className="skill-logo h-16 w-16" aria-hidden>
       <path
         fill="#EA4B71"
         d="M21.4737 5.6842c-1.1772 0-2.1663.8051-2.4468 1.8947h-2.8955c-1.235 0-2.289.893-2.492 2.111l-.1038.623a1.263 1.263 0 0 1-1.246 1.0555H11.289c-.2805-1.0896-1.2696-1.8947-2.4468-1.8947s-2.1663.8051-2.4467 1.8947H4.973c-.2805-1.0896-1.2696-1.8947-2.4468-1.8947C1.1311 9.4737 0 10.6047 0 12s1.131 2.5263 2.5263 2.5263c1.1772 0 2.1663-.8051 2.4468-1.8947h1.4223c.2804 1.0896 1.2696 1.8947 2.4467 1.8947 1.1772 0 2.1663-.8051 2.4468-1.8947h1.0008a1.263 1.263 0 0 1 1.2459 1.0555l.1038.623c.203 1.218 1.257 2.111 2.492 2.111h.3692c.2804 1.0895 1.2696 1.8947 2.4468 1.8947 1.3952 0 2.5263-1.131 2.5263-2.5263s-1.131-2.5263-2.5263-2.5263c-1.1772 0-2.1664.805-2.4468 1.8947h-.3692a1.263 1.263 0 0 1-1.246-1.0555l-.1037-.623A2.52 2.52 0 0 0 13.9607 12a2.52 2.52 0 0 0 .821-1.4794l.1038-.623a1.263 1.263 0 0 1 1.2459-1.0555h2.8955c.2805 1.0896 1.2696 1.8947 2.4468 1.8947 1.3952 0 2.5263-1.131 2.5263-2.5263s-1.131-2.5263-2.5263-2.5263m0 1.2632a1.263 1.263 0 0 1 1.2631 1.2631 1.263 1.263 0 0 1-1.2631 1.2632 1.263 1.263 0 0 1-1.2632-1.2632 1.263 1.263 0 0 1 1.2632-1.2631M2.5263 10.7368A1.263 1.263 0 0 1 3.7895 12a1.263 1.263 0 0 1-1.2632 1.2632A1.263 1.263 0 0 1 1.2632 12a1.263 1.263 0 0 1 1.2631-1.2632m6.3158 0A1.263 1.263 0 0 1 10.1053 12a1.263 1.263 0 0 1-1.2632 1.2632A1.263 1.263 0 0 1 7.579 12a1.263 1.263 0 0 1 1.2632-1.2632m10.1053 3.7895a1.263 1.263 0 0 1 1.2631 1.2632 1.263 1.263 0 0 1-1.2631 1.2631 1.263 1.263 0 0 1-1.2632-1.2631 1.263 1.263 0 0 1 1.2632-1.2632"
@@ -44,7 +44,7 @@ function RubyLogo() {
       alt=""
       width={64}
       height={64}
-      className="h-16 w-16 object-contain"
+      className="skill-logo h-16 w-16 object-contain"
       decoding="async"
     />
   );
@@ -52,7 +52,7 @@ function RubyLogo() {
 
 function KiCadLogo() {
   return (
-    <svg viewBox="0 0 64 64" className="h-16 w-16" aria-hidden>
+    <svg viewBox="0 0 64 64" className="skill-logo h-16 w-16" aria-hidden>
       <rect width="64" height="64" fill="#2f4bb7" />
       <path
         d="M8 32h16l6-14 8 28 6-14h12"
@@ -70,7 +70,7 @@ function KiCadLogo() {
 
 function EasyEDALogo() {
   return (
-    <svg viewBox="0 0 24 24" className="h-16 w-16" aria-hidden>
+    <svg viewBox="0 0 24 24" className="skill-logo h-16 w-16" aria-hidden>
       <path
         fill="#1765F6"
         d="M13.31 3.108a7.67 7.67 0 0 0-3.015.545 7.67 7.67 0 0 0-1.73.951 7.865 7.865 0 0 0-1.59 1.567 6.308 6.308 0 0 0-.764-.047C2.78 6.124 0 8.91 0 12.35a6.217 6.217 0 0 0 4.146 5.868 3.759 3.759 0 0 0 7.326-1.574l5.3-2.673-.04-.078.499-.257-1.021-2.027-.499.25-.047-.086-5.291 2.658a3.727 3.727 0 0 0-2.627-1.076 3.77 3.77 0 0 0-3.42 2.198 3.723 3.723 0 0 1-1.7-4.146 3.71 3.71 0 0 1 5.549-2.214 5.211 5.211 0 0 1 6.585-3.32 5.24 5.24 0 0 1 3.538 4.373 2.913 2.913 0 0 1 3.188 2.899 2.909 2.909 0 0 1-2.65 2.899h-2.135v2.517h2.244l.11-.016a5.407 5.407 0 0 0 4.925-5.852 5.459 5.459 0 0 0-1.574-3.375A5.355 5.355 0 0 0 20.3 8.01a7.725 7.725 0 0 0-6.99-4.901ZM7.748 15.367c.965 0 1.753.791 1.753 1.761a1.748 1.748 0 0 1-1.753 1.753 1.748 1.748 0 0 1-1.754-1.753 1.756 1.756 0 0 1 1.754-1.753Z"
@@ -109,10 +109,13 @@ const TABS = ["Code", "Hardware"] as const;
 
 export function Skills() {
   const sectionRef = useRef<HTMLElement>(null);
+  const tablistRef = useRef<HTMLDivElement>(null);
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [tab, setTab] = useState<(typeof TABS)[number]>("Code");
   const [entered, setEntered] = useState(false);
   const [panelVisible, setPanelVisible] = useState(false);
   const [reduced, setReduced] = useState(false);
+  const [indicator, setIndicator] = useState({ left: 0, width: 0 });
 
   useEffect(() => {
     const query = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -143,6 +146,18 @@ export function Skills() {
     return () => observer.disconnect();
   }, [reduced]);
 
+  useLayoutEffect(() => {
+    const active = tabRefs.current[tab];
+    const list = tablistRef.current;
+    if (!active || !list) return;
+    const listBox = list.getBoundingClientRect();
+    const tabBox = active.getBoundingClientRect();
+    setIndicator({
+      left: tabBox.left - listBox.left,
+      width: tabBox.width,
+    });
+  }, [tab, entered]);
+
   const selectTab = (name: (typeof TABS)[number]) => {
     if (name === tab) return;
     if (reduced) {
@@ -166,8 +181,13 @@ export function Skills() {
         <FadeIn>
           <p className="text-xs tracking-widest text-muted uppercase">Skills</p>
         </FadeIn>
-        <FadeIn delayMs={80}>
-          <div role="tablist" aria-label="Skills" className="mt-6 flex gap-6">
+        <FadeIn delayMs={90}>
+          <div
+            ref={tablistRef}
+            role="tablist"
+            aria-label="Skills"
+            className="relative mt-6 flex gap-6"
+          >
             {TABS.map((name) => {
               const selected = tab === name;
               return (
@@ -176,15 +196,23 @@ export function Skills() {
                   type="button"
                   role="tab"
                   id={`tab-${name}`}
+                  ref={(node) => {
+                    tabRefs.current[name] = node;
+                  }}
                   aria-selected={selected}
                   aria-controls={`panel-${name}`}
                   onClick={() => selectTab(name)}
-                  className={`border-b pb-2 text-xs tracking-widest uppercase transition-colors duration-300 ${selected ? "border-fg text-fg" : "border-transparent text-muted"}`}
+                  className={`pb-2 text-xs tracking-widest uppercase transition-colors duration-300 ${selected ? "text-fg" : "text-muted hover:text-fg/80"}`}
                 >
                   {name}
                 </button>
               );
             })}
+            <span
+              aria-hidden
+              className="tab-indicator"
+              style={{ left: indicator.left, width: indicator.width }}
+            />
           </div>
         </FadeIn>
         <ul
@@ -196,8 +224,8 @@ export function Skills() {
           {skills.map((skill, index) => (
             <li
               key={`${tab}-${skill.name}`}
-              className="flex flex-col items-start border border-line bg-bg/80 px-6 py-8 backdrop-blur-sm"
-              style={{ transitionDelay: showPanel ? `${index * 70}ms` : "0ms" }}
+              className="skill-card flex flex-col items-start border border-line bg-bg/80 px-6 py-8 backdrop-blur-sm"
+              style={{ transitionDelay: showPanel ? `${index * 80}ms` : "0ms" }}
             >
               {skill.logo}
               <h2 className="mt-8 text-lg font-medium tracking-wide">{skill.name}</h2>

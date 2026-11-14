@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type CSSProperties } from "react";
 import { ClientOnly, createFileRoute } from "@tanstack/react-router";
 import { FadeIn } from "@/components/fade-in";
 import { ExternalLink, LeaveSiteProvider, useLeaveSite } from "@/components/leave-site-gate";
@@ -19,9 +19,27 @@ const SolarSystem = lazy(() =>
 export const Route = createFileRoute("/")({ component: Home });
 
 const actionClass =
-  "inline-flex h-11 min-w-28 items-center justify-center border border-line bg-bg px-6 text-sm font-medium tracking-wide text-fg transition-colors duration-200 hover:bg-fg/10 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-4 focus-visible:outline-fg";
+  "action-press inline-flex h-11 min-w-28 items-center justify-center border border-line bg-bg px-6 text-sm font-medium tracking-wide text-fg hover:bg-fg/10 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-4 focus-visible:outline-fg";
 
-function EmailMe({ label }: { label: string }) {
+function BrandTitle({ ready }: { ready: boolean }) {
+  const text = "Theodor F.";
+  return (
+    <h1 className="text-center text-2xl font-normal tracking-brand text-fg sm:text-4xl" aria-label={text}>
+      {text.split("").map((char, index) => (
+        <span
+          key={`${char}-${index}`}
+          aria-hidden
+          className={`brand-letter ${ready ? "is-visible" : ""}`}
+          style={{ "--letter-delay": `${index * 42}ms` } as CSSProperties}
+        >
+          {char === " " ? "\u00A0" : char}
+        </span>
+      ))}
+    </h1>
+  );
+}
+
+function EmailMe({ label, className = actionClass }: { label: string; className?: string }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const { requestLeave } = useLeaveSite();
@@ -48,7 +66,7 @@ function EmailMe({ label }: { label: string }) {
         <div
           role="menu"
           aria-label="Email"
-          className="absolute bottom-full left-1/2 z-10 mb-3 flex w-max -translate-x-1/2 flex-col border border-line bg-bg"
+          className="dialog-panel absolute bottom-full left-1/2 z-10 mb-3 flex w-max -translate-x-1/2 flex-col border border-line bg-bg"
         >
           <button
             type="button"
@@ -76,7 +94,7 @@ function EmailMe({ label }: { label: string }) {
       ) : null}
       <button
         type="button"
-        className={actionClass}
+        className={className}
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={() => setOpen((current) => !current)}
@@ -123,7 +141,7 @@ function SystemLoader({ done }: { done: boolean }) {
     >
       <div className="w-56">
         <div
-          className="h-px bg-white"
+          className={`loader-line h-px bg-white ${done ? "is-done" : ""}`}
           style={{
             width: `${done ? 100 : pct}%`,
             transition: done ? "width 320ms ease-out" : "none",
@@ -140,6 +158,7 @@ function Home() {
   return (
     <LeaveSiteProvider>
       <main className="relative isolate bg-bg text-fg">
+        <div className="page-sheen" aria-hidden />
         <SiteStars />
         <section className="relative z-10 h-dvh w-full overflow-hidden">
           <div className="hero-star-blend absolute inset-0">
@@ -152,52 +171,60 @@ function Home() {
 
           <SystemLoader done={ready} />
 
-          <header
-            className={`pointer-events-none absolute inset-x-0 top-0 z-30 flex justify-center px-6 pt-12 sm:pt-16 transition-opacity duration-700 ease-out ${
-              ready ? "opacity-100" : "opacity-0"
-            }`}
-          >
-            <h1 className="text-center text-2xl font-normal tracking-brand text-fg sm:text-4xl">
-              Theodor F.
-            </h1>
+          <header className="pointer-events-none absolute inset-x-0 top-0 z-30 flex justify-center px-6 pt-12 sm:pt-16">
+            <BrandTitle ready={ready} />
           </header>
 
-          <div
-            className={`absolute inset-x-0 bottom-0 z-30 flex items-center justify-center px-6 pb-8 sm:pb-12 transition-opacity duration-700 ease-out delay-150 ${
-              ready ? "opacity-100" : "opacity-0"
-            }`}
-          >
-            <nav
-              aria-label="Profiles"
-              className="flex flex-wrap items-center justify-center gap-3"
-            >
-              <ExternalLink href={githubUrl} className={actionClass}>
-                GitHub
-              </ExternalLink>
-              <ExternalLink href={xUrl} className={actionClass} aria-label="X profile">
-                X
-              </ExternalLink>
-              <EmailMe label="Email me" />
+          <div className="absolute inset-x-0 bottom-0 z-30 flex items-center justify-center px-6 pb-8 sm:pb-12">
+            <nav aria-label="Profiles" className="flex flex-wrap items-center justify-center gap-3">
+              <div
+                className={`hero-cta ${ready ? "is-visible" : ""}`}
+                style={{ "--cta-delay": "120ms" } as CSSProperties}
+              >
+                <ExternalLink href={githubUrl} className={actionClass}>
+                  GitHub
+                </ExternalLink>
+              </div>
+              <div
+                className={`hero-cta ${ready ? "is-visible" : ""}`}
+                style={{ "--cta-delay": "220ms" } as CSSProperties}
+              >
+                <ExternalLink href={xUrl} className={actionClass} aria-label="X profile">
+                  X
+                </ExternalLink>
+              </div>
+              <div
+                className={`hero-cta ${ready ? "is-visible" : ""}`}
+                style={{ "--cta-delay": "320ms" } as CSSProperties}
+              >
+                <EmailMe label="Email me" />
+              </div>
             </nav>
           </div>
         </section>
         <div className="relative z-10">
           <Skills />
           <section id="reach" className="px-6 pb-28 text-fg">
-            <FadeIn>
+            <FadeIn variant="scale">
               <div className="mx-auto w-full max-w-5xl border border-line bg-bg/80 px-6 py-10 backdrop-blur-sm sm:px-10">
-                <h2 className="text-lg font-medium tracking-wide">Feel free to reach out</h2>
-                <p className="mt-3 max-w-md text-sm text-muted">I can help with projects.</p>
-                <div className="mt-8">
-                  <EmailMe label="Contact me" />
-                </div>
+                <FadeIn delayMs={80}>
+                  <h2 className="text-lg font-medium tracking-wide">Feel free to reach out</h2>
+                </FadeIn>
+                <FadeIn delayMs={160}>
+                  <p className="mt-3 max-w-md text-sm text-muted">I can help with projects.</p>
+                </FadeIn>
+                <FadeIn delayMs={240}>
+                  <div className="mt-8">
+                    <EmailMe label="Contact me" />
+                  </div>
+                </FadeIn>
               </div>
             </FadeIn>
           </section>
         </div>
         <p
           aria-label="Build version"
-          className="pointer-events-none fixed right-4 bottom-4 z-40 text-[10px] tracking-[0.18em] text-muted/70 uppercase sm:right-6 sm:bottom-6"
+          className="build-badge pointer-events-none fixed right-4 bottom-4 z-40 text-[10px] tracking-[0.18em] text-muted/70 uppercase sm:right-6 sm:bottom-6"
         >
           build v.1.1900
         </p>
