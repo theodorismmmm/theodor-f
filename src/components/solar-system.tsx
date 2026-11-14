@@ -526,8 +526,8 @@ function Starfield({ animate }: { animate: boolean }) {
 
         void main() {
           vec3 dir = normalize(vDir);
-          float milky = pow(1.0 - abs(dir.y), 2.4) * 0.045;
-          vec3 col = vec3(0.004, 0.004, 0.006) + milky * vec3(0.1, 0.11, 0.16);
+          float milky = pow(1.0 - abs(dir.y), 2.4) * 0.04;
+          vec3 col = vec3(0.0) + milky * vec3(0.1, 0.11, 0.16);
 
           float cells = 180.0;
           vec3 cell = floor(dir * cells);
@@ -541,7 +541,8 @@ function Starfield({ animate }: { animate: boolean }) {
           float dust = hash31(dir * 42.0);
           col += smoothstep(0.86, 1.0, dust) * 0.02 * vec3(0.5, 0.6, 1.0);
 
-          gl_FragColor = vec4(col, 1.0);
+          float alpha = max(max(col.r, col.g), col.b);
+          gl_FragColor = vec4(col, alpha);
         }
       `,
     });
@@ -1677,6 +1678,7 @@ export function SolarSystem({ onReady }: { onReady?: () => void }) {
           toneMappingExposure: 1.05,
         }}
         onCreated={({ gl }) => {
+          gl.setClearColor(COLOR.bg, 1);
           gl.toneMapping = THREE.ACESFilmicToneMapping;
           gl.toneMappingExposure = 1.05;
           setVisible(true);
