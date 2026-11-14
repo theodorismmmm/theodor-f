@@ -142,11 +142,13 @@ function Home() {
       <main className="relative isolate bg-bg text-fg">
         <SiteStars />
         <section className="relative z-10 h-dvh w-full overflow-hidden">
-          <ClientOnly fallback={null}>
-            <Suspense fallback={null}>
-              <SolarSystem onReady={() => setReady(true)} />
-            </Suspense>
-          </ClientOnly>
+          <div className="hero-star-blend absolute inset-0">
+            <ClientOnly fallback={null}>
+              <Suspense fallback={null}>
+                <SolarSystem onReady={() => setReady(true)} />
+              </Suspense>
+            </ClientOnly>
+          </div>
 
           <SystemLoader done={ready} />
 

@@ -41,6 +41,23 @@
 }
 
 @layer utilities {
+  .hero-star-blend {
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      #000 0%,
+      #000 72%,
+      rgba(0, 0, 0, 0.55) 88%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      #000 0%,
+      #000 72%,
+      rgba(0, 0, 0, 0.55) 88%,
+      transparent 100%
+    );
+  }
+
   .fade-rise {
     opacity: 0;
     transform: translate3d(0, 1.25rem, 0);
