@@ -93,7 +93,7 @@ export function Skills() {
   const [tab, setTab] = useState<(typeof TABS)[number]>("Code");
 
   return (
-    <section id="skills" className="bg-bg px-6 py-24 text-fg sm:py-32">
+    <section id="skills" className="px-6 py-24 text-fg sm:py-32">
       <div className="mx-auto w-full max-w-5xl">
         <p className="text-xs tracking-widest text-muted uppercase">Skills</p>
         <div role="tablist" aria-label="Skills" className="mt-6 flex gap-6">
@@ -124,7 +124,7 @@ export function Skills() {
           {(tab === "Code" ? CODE_SKILLS : HARDWARE_SKILLS).map((skill) => (
             <li
               key={skill.name}
-              className="flex flex-col items-start border border-line px-6 py-8"
+              className="flex flex-col items-start border border-line bg-bg/80 px-6 py-8 backdrop-blur-sm"
             >
               {skill.logo}
               <h2 className="mt-8 text-lg font-medium tracking-wide">{skill.name}</h2>

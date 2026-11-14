@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { ClientOnly, createFileRoute } from "@tanstack/react-router";
 import { githubUrl, gmailComposeUrl, mailtoUrl } from "@/lib/links";
+import { SiteStars } from "@/components/site-stars";
 import { Skills } from "@/components/skills";
 
 if (typeof window !== "undefined") {
@@ -128,8 +129,9 @@ function Home() {
   const [ready, setReady] = useState(false);
 
   return (
-    <main className="bg-bg text-fg">
-      <section className="relative h-dvh w-full overflow-hidden">
+    <main className="relative isolate bg-bg text-fg">
+      <SiteStars />
+      <section className="relative z-10 h-dvh w-full overflow-hidden">
         <ClientOnly fallback={null}>
           <Suspense fallback={null}>
             <SolarSystem onReady={() => setReady(true)} />
@@ -166,16 +168,18 @@ function Home() {
           </nav>
         </div>
       </section>
-      <Skills />
-      <section id="reach" className="bg-bg px-6 pb-28 text-fg">
-        <div className="mx-auto w-full max-w-5xl border border-line px-6 py-10 sm:px-10">
-          <h2 className="text-lg font-medium tracking-wide">Feel free to reach out</h2>
-          <p className="mt-3 max-w-md text-sm text-muted">I can help with projects.</p>
-          <div className="mt-8">
-            <EmailMe label="Contact me" />
+      <div className="relative z-10">
+        <Skills />
+        <section id="reach" className="px-6 pb-28 text-fg">
+          <div className="mx-auto w-full max-w-5xl border border-line bg-bg/80 px-6 py-10 backdrop-blur-sm sm:px-10">
+            <h2 className="text-lg font-medium tracking-wide">Feel free to reach out</h2>
+            <p className="mt-3 max-w-md text-sm text-muted">I can help with projects.</p>
+            <div className="mt-8">
+              <EmailMe label="Contact me" />
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
     </main>
   );
 }
