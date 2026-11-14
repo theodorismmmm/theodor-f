@@ -97,7 +97,7 @@ function SystemLoader({ done }: { done: boolean }) {
 
   useEffect(() => {
     if (!done) return;
-    const hide = window.setTimeout(() => setGone(true), 160);
+    const hide = window.setTimeout(() => setGone(true), 520);
     return () => window.clearTimeout(hide);
   }, [done]);
 
@@ -105,7 +105,9 @@ function SystemLoader({ done }: { done: boolean }) {
 
   return (
     <div
-      className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center"
+      className={`pointer-events-none absolute inset-0 z-20 flex items-center justify-center transition-opacity duration-500 ease-out ${
+        done ? "opacity-0" : "opacity-100"
+      }`}
       role="status"
       aria-label="Loading"
     >
@@ -114,7 +116,7 @@ function SystemLoader({ done }: { done: boolean }) {
           className="h-px bg-white"
           style={{
             width: `${done ? 100 : pct}%`,
-            transition: done ? "width 280ms ease-out" : "none",
+            transition: done ? "width 320ms ease-out" : "none",
           }}
         />
       </div>
@@ -136,13 +138,21 @@ function Home() {
 
         <SystemLoader done={ready} />
 
-        <header className="pointer-events-none absolute inset-x-0 top-0 z-30 flex justify-center px-6 pt-12 sm:pt-16">
+        <header
+          className={`pointer-events-none absolute inset-x-0 top-0 z-30 flex justify-center px-6 pt-12 sm:pt-16 transition-opacity duration-700 ease-out ${
+            ready ? "opacity-100" : "opacity-0"
+          }`}
+        >
           <h1 className="text-center text-2xl font-normal tracking-brand text-fg sm:text-4xl">
             Theodor F.
           </h1>
         </header>
 
-        <div className="absolute inset-x-0 bottom-0 z-30 flex items-center justify-center px-6 pb-8 sm:pb-12">
+        <div
+          className={`absolute inset-x-0 bottom-0 z-30 flex items-center justify-center px-6 pb-8 sm:pb-12 transition-opacity duration-700 ease-out delay-150 ${
+            ready ? "opacity-100" : "opacity-0"
+          }`}
+        >
           <nav aria-label="Profiles" className="flex items-center justify-center gap-3">
             <a
               href={githubUrl}

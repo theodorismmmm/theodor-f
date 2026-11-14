@@ -54,7 +54,18 @@ function KiCadLogo() {
   );
 }
 
-const SKILLS = [
+function EasyEDALogo() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-16 w-16" aria-hidden>
+      <path
+        fill="#1765F6"
+        d="M13.31 3.108a7.67 7.67 0 0 0-3.015.545 7.67 7.67 0 0 0-1.73.951 7.865 7.865 0 0 0-1.59 1.567 6.308 6.308 0 0 0-.764-.047C2.78 6.124 0 8.91 0 12.35a6.217 6.217 0 0 0 4.146 5.868 3.759 3.759 0 0 0 7.326-1.574l5.3-2.673-.04-.078.499-.257-1.021-2.027-.499.25-.047-.086-5.291 2.658a3.727 3.727 0 0 0-2.627-1.076 3.77 3.77 0 0 0-3.42 2.198 3.723 3.723 0 0 1-1.7-4.146 3.71 3.71 0 0 1 5.549-2.214 5.211 5.211 0 0 1 6.585-3.32 5.24 5.24 0 0 1 3.538 4.373 2.913 2.913 0 0 1 3.188 2.899 2.909 2.909 0 0 1-2.65 2.899h-2.135v2.517h2.244l.11-.016a5.407 5.407 0 0 0 4.925-5.852 5.459 5.459 0 0 0-1.574-3.375A5.355 5.355 0 0 0 20.3 8.01a7.725 7.725 0 0 0-6.99-4.901ZM7.748 15.367c.965 0 1.753.791 1.753 1.761a1.748 1.748 0 0 1-1.753 1.753 1.748 1.748 0 0 1-1.754-1.753 1.756 1.756 0 0 1 1.754-1.753Z"
+      />
+    </svg>
+  );
+}
+
+const CODE_SKILLS = [
   {
     name: "Python",
     logo: <PythonLogo />,
@@ -62,6 +73,17 @@ const SKILLS = [
   {
     name: "n8n",
     logo: <N8nLogo />,
+  },
+];
+
+const HARDWARE_SKILLS = [
+  {
+    name: "KiCad",
+    logo: <KiCadLogo />,
+  },
+  {
+    name: "EasyEDA",
+    logo: <EasyEDALogo />,
   },
 ];
 
@@ -93,36 +115,22 @@ export function Skills() {
             );
           })}
         </div>
-        {tab === "Code" ? (
-          <ul
-            id="panel-Code"
-            role="tabpanel"
-            aria-labelledby="tab-Code"
-            className="mt-10 grid max-w-3xl gap-4 sm:grid-cols-2"
-          >
-            {SKILLS.map((skill) => (
-              <li
-                key={skill.name}
-                className="flex flex-col items-start border border-line px-6 py-8"
-              >
-                {skill.logo}
-                <h2 className="mt-8 text-lg font-medium tracking-wide">{skill.name}</h2>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <ul
-            id="panel-Hardware"
-            role="tabpanel"
-            aria-labelledby="tab-Hardware"
-            className="mt-10 grid max-w-sm gap-4"
-          >
-            <li className="flex flex-col items-start border border-line px-6 py-8">
-              <KiCadLogo />
-              <h2 className="mt-8 text-lg font-medium tracking-wide">KiCad</h2>
+        <ul
+          id={`panel-${tab}`}
+          role="tabpanel"
+          aria-labelledby={`tab-${tab}`}
+          className="mt-10 grid max-w-3xl gap-4 sm:grid-cols-2"
+        >
+          {(tab === "Code" ? CODE_SKILLS : HARDWARE_SKILLS).map((skill) => (
+            <li
+              key={skill.name}
+              className="flex flex-col items-start border border-line px-6 py-8"
+            >
+              {skill.logo}
+              <h2 className="mt-8 text-lg font-medium tracking-wide">{skill.name}</h2>
             </li>
-          </ul>
-        )}
+          ))}
+        </ul>
       </div>
     </section>
   );
