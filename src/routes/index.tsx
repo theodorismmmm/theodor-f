@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { ClientOnly, createFileRoute } from "@tanstack/react-router";
+import { FadeIn } from "@/components/fade-in";
 import { ExternalLink, LeaveSiteProvider, useLeaveSite } from "@/components/leave-site-gate";
 import { SiteStars } from "@/components/site-stars";
 import { Skills } from "@/components/skills";
@@ -181,15 +182,23 @@ function Home() {
         <div className="relative z-10">
           <Skills />
           <section id="reach" className="px-6 pb-28 text-fg">
-            <div className="mx-auto w-full max-w-5xl border border-line bg-bg/80 px-6 py-10 backdrop-blur-sm sm:px-10">
-              <h2 className="text-lg font-medium tracking-wide">Feel free to reach out</h2>
-              <p className="mt-3 max-w-md text-sm text-muted">I can help with projects.</p>
-              <div className="mt-8">
-                <EmailMe label="Contact me" />
+            <FadeIn>
+              <div className="mx-auto w-full max-w-5xl border border-line bg-bg/80 px-6 py-10 backdrop-blur-sm sm:px-10">
+                <h2 className="text-lg font-medium tracking-wide">Feel free to reach out</h2>
+                <p className="mt-3 max-w-md text-sm text-muted">I can help with projects.</p>
+                <div className="mt-8">
+                  <EmailMe label="Contact me" />
+                </div>
               </div>
-            </div>
+            </FadeIn>
           </section>
         </div>
+        <p
+          aria-label="Build version"
+          className="pointer-events-none fixed right-4 bottom-4 z-40 text-[10px] tracking-[0.18em] text-muted/70 uppercase sm:right-6 sm:bottom-6"
+        >
+          build v.1.1900
+        </p>
       </main>
     </LeaveSiteProvider>
   );
