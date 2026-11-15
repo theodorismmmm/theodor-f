@@ -118,6 +118,24 @@
     background-color: color-mix(in srgb, var(--color-bg) 72%, transparent);
   }
 
+  .project-card {
+    transition: border-color 320ms ease, background-color 320ms ease;
+  }
+
+  .project-card:hover {
+    border-color: #ffffff55;
+  }
+
+  .project-preview {
+    transition: transform 700ms var(--ease-out-soft), filter 700ms ease;
+  }
+
+  .project-card:hover .project-preview,
+  .project-card:focus-within .project-preview {
+    transform: scale(1.02);
+    filter: brightness(1.05);
+  }
+
   .skill-logo {
     transition: transform 520ms var(--ease-out-soft), filter 520ms ease;
   }
@@ -278,6 +296,8 @@
 
     .skill-card:hover,
     .skill-card:hover .skill-logo,
+    .project-card:hover .project-preview,
+    .project-card:focus-within .project-preview,
     .action-press:hover,
     .action-press:active {
       transform: none;

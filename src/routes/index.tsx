@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState, type CSSProperties } from 
 import { ClientOnly, createFileRoute } from "@tanstack/react-router";
 import { FadeIn } from "@/components/fade-in";
 import { ExternalLink, LeaveSiteProvider, useLeaveSite } from "@/components/leave-site-gate";
+import { Projects } from "@/components/projects";
 import { SiteStars } from "@/components/site-stars";
 import { Skills } from "@/components/skills";
 import { githubUrl, gmailComposeUrl, mailtoUrl, xUrl } from "@/lib/links";
@@ -203,6 +204,7 @@ function Home() {
           </div>
         </section>
         <div className="relative z-10">
+          <Projects />
           <Skills />
           <section id="reach" className="px-6 pb-28 text-fg">
             <FadeIn variant="scale">
