@@ -1,6 +1,11 @@
 import { FadeIn } from "@/components/fade-in";
 import { ExternalLink } from "@/components/leave-site-gate";
-import { openLightsUrl, praktikumsRadarUrl, twoBallUrl } from "@/lib/links";
+import {
+  aviationNorthUrl,
+  openLightsUrl,
+  praktikumsRadarUrl,
+  twoBallUrl,
+} from "@/lib/links";
 
 const PROJECTS = [
   {
@@ -26,6 +31,14 @@ const PROJECTS = [
     tag: "Arcade",
     description:
       "Einfach spielen — wähle ein Spiel, klick in den Player und starte deine nächste Runde. Mehr Platz im Vollbild, ohne künstliche Limits.",
+  },
+  {
+    name: "Aviation North",
+    href: aviationNorthUrl,
+    preview: "/projects/aviation-north.jpg",
+    tag: "VFR Charts",
+    description:
+      "Learn VFR charts from scratch—runways, symbols, and airspace—using real airport photos that grow from easy fields to hard hubs.",
   },
 ] as const;
 
