@@ -1,6 +1,6 @@
 import { FadeIn } from "@/components/fade-in";
 import { ExternalLink } from "@/components/leave-site-gate";
-import { openLightsUrl } from "@/lib/links";
+import { openLightsUrl, praktikumsRadarUrl, twoBallUrl } from "@/lib/links";
 
 const PROJECTS = [
   {
@@ -10,6 +10,22 @@ const PROJECTS = [
     tag: "Govee Open API",
     description:
       "A professional browser dashboard for your Govee lights — color, brightness, presets, and schedules, powered by your own API key.",
+  },
+  {
+    name: "PraktikumsRadar",
+    href: praktikumsRadarUrl,
+    preview: "/projects/praktikumsradar.png",
+    tag: "Schülerpraktikum",
+    description:
+      "Ort wählen, suchen, fertig — findet offene Schülerpraktika und Betriebe in der Nähe über Arbeitsagentur und OpenStreetMap, ohne extra Map-Keys.",
+  },
+  {
+    name: "Two Ball Classic",
+    href: twoBallUrl,
+    preview: "/projects/two-ball.png",
+    tag: "Arcade",
+    description:
+      "Einfach spielen — wähle ein Spiel, klick in den Player und starte deine nächste Runde. Mehr Platz im Vollbild, ohne künstliche Limits.",
   },
 ] as const;
 
@@ -26,7 +42,7 @@ export function Projects() {
         <ul className="mt-8 grid gap-5">
           {PROJECTS.map((project, index) => (
             <li key={project.name}>
-              <FadeIn delayMs={index * 100}>
+              <FadeIn delayMs={index * 80}>
                 <article className="project-card flex flex-col gap-5 border border-line bg-bg/80 p-4 backdrop-blur-sm sm:flex-row sm:items-center sm:gap-6 sm:p-5">
                   <ExternalLink
                     href={project.href}
