@@ -2,6 +2,7 @@ import { FadeIn } from "@/components/fade-in";
 import { ExternalLink } from "@/components/leave-site-gate";
 import {
   aviationNorthUrl,
+  judoNowUrl,
   openLightsUrl,
   praktikumsRadarUrl,
   twoBallUrl,
@@ -39,6 +40,14 @@ const PROJECTS = [
     tag: "VFR Charts",
     description:
       "Learn VFR charts from scratch—runways, symbols, and airspace—using real airport photos that grow from easy fields to hard hubs.",
+  },
+  {
+    name: "JudoNOW",
+    href: judoNowUrl,
+    preview: "/projects/judonow.jpg",
+    tag: "Judo Training",
+    description:
+      "Ready für den nächsten Gürtel — wähle deine Gürtelfarbe und starte sofort mit den passenden Übungen von Weißgurt bis Dan.",
   },
 ] as const;
 
