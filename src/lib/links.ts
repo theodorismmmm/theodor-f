@@ -10,7 +10,7 @@ export const twoBallUrl = "https://theodorismmmm.github.io";
 
 export const aviationNorthUrl = "https://aviation-north.vercel.app";
 
-export const judoNowUrl = "https://judonow.vercel.app";
+export const judoNowUrl = "https://judonow.theodorismmmm.com";
 
 export const emailAddress = "info@theodorismmmm.com";
 
